@@ -10,6 +10,7 @@ import path from 'path';
 dotenv.config();
 
 const app = express();
+export default app;
 
 // Initialize PostgreSQL driver adapter (Required for Prisma 7)
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -174,7 +175,9 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-  console.log(`API endpoints available at http://localhost:${PORT}/api`);
-});
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+    console.log(`API endpoints available at http://localhost:${PORT}/api`);
+  });
+}
