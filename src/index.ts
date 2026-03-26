@@ -1,10 +1,10 @@
-const express = require('express');
-const cors = require('cors');
-const { Pool } = require('pg');
-const { PrismaPg } = require('@prisma/adapter-pg');
-const { PrismaClient } = require('@prisma/client');
-const dotenv = require('dotenv');
-const path = require('path');
+import express, { Request, Response } from 'express';
+import cors from 'cors';
+import { Pool } from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '@prisma/client';
+import dotenv from 'dotenv';
+import path from 'path';
 
 // Configure environment variables
 dotenv.config();
@@ -26,12 +26,12 @@ app.use(express.static(path.join(__dirname, '../public')));
 const apiRouter = express.Router();
 
 // Root route of the API
-apiRouter.get('/', (req, res) => {
+apiRouter.get('/', (req: Request, res: Response) => {
   res.json({ message: 'RCManager API is running!', status: 'OK' });
 });
 
 // --- PARKS ---
-apiRouter.get('/parks', async (req, res) => {
+apiRouter.get('/parks', async (req: Request, res: Response) => {
   try {
     const parks = await prisma.park.findMany({
       include: { operator: true }
@@ -43,7 +43,7 @@ apiRouter.get('/parks', async (req, res) => {
   }
 });
 
-apiRouter.post('/parks', async (req, res) => {
+apiRouter.post('/parks', async (req: Request, res: Response) => {
   try {
     const park = await prisma.park.create({
       data: req.body
@@ -56,7 +56,7 @@ apiRouter.post('/parks', async (req, res) => {
 });
 
 // --- COASTERS ---
-apiRouter.get('/coasters', async (req, res) => {
+apiRouter.get('/coasters', async (req: Request, res: Response) => {
   try {
     const coasters = await prisma.coaster.findMany({
       include: { park: true }
@@ -68,7 +68,7 @@ apiRouter.get('/coasters', async (req, res) => {
   }
 });
 
-apiRouter.post('/coasters', async (req, res) => {
+apiRouter.post('/coasters', async (req: Request, res: Response) => {
   try {
     const coaster = await prisma.coaster.create({
       data: req.body
@@ -81,7 +81,7 @@ apiRouter.post('/coasters', async (req, res) => {
 });
 
 // --- OPERATORS ---
-apiRouter.get('/operators', async (req, res) => {
+apiRouter.get('/operators', async (req: Request, res: Response) => {
   try {
     const operators = await prisma.operator.findMany();
     res.json(operators);
@@ -91,7 +91,7 @@ apiRouter.get('/operators', async (req, res) => {
   }
 });
 
-apiRouter.post('/operators', async (req, res) => {
+apiRouter.post('/operators', async (req: Request, res: Response) => {
   try {
     const operator = await prisma.operator.create({
       data: req.body
@@ -104,7 +104,7 @@ apiRouter.post('/operators', async (req, res) => {
 });
 
 // --- ATTRACTIONS ---
-apiRouter.get('/attractions', async (req, res) => {
+apiRouter.get('/attractions', async (req: Request, res: Response) => {
   try {
     const attractions = await prisma.attraction.findMany({
       include: { park: true }
@@ -116,7 +116,7 @@ apiRouter.get('/attractions', async (req, res) => {
   }
 });
 
-apiRouter.post('/attractions', async (req, res) => {
+apiRouter.post('/attractions', async (req: Request, res: Response) => {
   try {
     const attraction = await prisma.attraction.create({
       data: req.body
@@ -129,7 +129,7 @@ apiRouter.post('/attractions', async (req, res) => {
 });
 
 // --- SHOWS ---
-apiRouter.get('/shows', async (req, res) => {
+apiRouter.get('/shows', async (req: Request, res: Response) => {
   try {
     const shows = await prisma.show.findMany({
       include: { park: true }
@@ -141,7 +141,7 @@ apiRouter.get('/shows', async (req, res) => {
   }
 });
 
-apiRouter.post('/shows', async (req, res) => {
+apiRouter.post('/shows', async (req: Request, res: Response) => {
   try {
     const show = await prisma.show.create({
       data: req.body
@@ -154,7 +154,7 @@ apiRouter.post('/shows', async (req, res) => {
 });
 
 // --- RESTAURANTS ---
-apiRouter.get('/restaurants', async (req, res) => {
+apiRouter.get('/restaurants', async (req: Request, res: Response) => {
   try {
     const restaurants = await prisma.restaurant.findMany({
       include: { park: true }
@@ -166,7 +166,7 @@ apiRouter.get('/restaurants', async (req, res) => {
   }
 });
 
-apiRouter.post('/restaurants', async (req, res) => {
+apiRouter.post('/restaurants', async (req: Request, res: Response) => {
   try {
     const restaurant = await prisma.restaurant.create({
       data: req.body
@@ -182,16 +182,17 @@ apiRouter.post('/restaurants', async (req, res) => {
 app.use('/api', apiRouter);
 
 // Serve dashboard at root
-app.get('/', (req, res) => {
+app.get('/', (req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
+// Start the server if running locally
 if (process.env.NODE_ENV !== 'production') {
-  const PORT = process.env.PORT || 3001;
   app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
-    console.log(`API endpoints available at http://localhost:${PORT}/api`);
+    console.log(`🚀 Server is running on http://localhost:${PORT}`);
+    console.log(`📁 API explorer available at http://localhost:${PORT}`);
   });
 }
 
-module.exports = app;
+// Export for serverless environments (like Vercel)
+export default app;
