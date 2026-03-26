@@ -1,10 +1,10 @@
-import express from 'express';
-import cors from 'cors';
-import { Pool } from 'pg';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '@prisma/client';
-import dotenv from 'dotenv';
-import path from 'path';
+const express = require('express');
+const cors = require('cors');
+const { Pool } = require('pg');
+const { PrismaPg } = require('@prisma/adapter-pg');
+const { PrismaClient } = require('@prisma/client');
+const dotenv = require('dotenv');
+const path = require('path');
 
 // Configure environment variables
 dotenv.config();
@@ -38,7 +38,8 @@ apiRouter.get('/parks', async (req, res) => {
     });
     res.json(parks);
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching parks', details: error });
+    console.error('Error fetching parks:', error);
+    res.status(500).json({ error: 'Error fetching parks', details: error instanceof Error ? error.message : error });
   }
 });
 
@@ -49,7 +50,8 @@ apiRouter.post('/parks', async (req, res) => {
     });
     res.status(201).json(park);
   } catch (error) {
-    res.status(500).json({ error: 'Error creating park', details: error });
+    console.error('Error creating park:', error);
+    res.status(500).json({ error: 'Error creating park', details: error instanceof Error ? error.message : error });
   }
 });
 
@@ -61,7 +63,8 @@ apiRouter.get('/coasters', async (req, res) => {
     });
     res.json(coasters);
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching coasters', details: error });
+    console.error('Error fetching coasters:', error);
+    res.status(500).json({ error: 'Error fetching coasters', details: error instanceof Error ? error.message : error });
   }
 });
 
@@ -72,7 +75,8 @@ apiRouter.post('/coasters', async (req, res) => {
     });
     res.status(201).json(coaster);
   } catch (error) {
-    res.status(500).json({ error: 'Error creating coaster', details: error });
+    console.error('Error creating coaster:', error);
+    res.status(500).json({ error: 'Error creating coaster', details: error instanceof Error ? error.message : error });
   }
 });
 
@@ -82,7 +86,8 @@ apiRouter.get('/operators', async (req, res) => {
     const operators = await prisma.operator.findMany();
     res.json(operators);
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching operators', details: error });
+    console.error('Error fetching operators:', error);
+    res.status(500).json({ error: 'Error fetching operators', details: error instanceof Error ? error.message : error });
   }
 });
 
@@ -93,7 +98,8 @@ apiRouter.post('/operators', async (req, res) => {
     });
     res.status(201).json(operator);
   } catch (error) {
-    res.status(500).json({ error: 'Error creating operator', details: error });
+    console.error('Error creating operator:', error);
+    res.status(500).json({ error: 'Error creating operator', details: error instanceof Error ? error.message : error });
   }
 });
 
@@ -105,7 +111,8 @@ apiRouter.get('/attractions', async (req, res) => {
     });
     res.json(attractions);
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching attractions', details: error });
+    console.error('Error fetching attractions:', error);
+    res.status(500).json({ error: 'Error fetching attractions', details: error instanceof Error ? error.message : error });
   }
 });
 
@@ -116,7 +123,8 @@ apiRouter.post('/attractions', async (req, res) => {
     });
     res.status(201).json(attraction);
   } catch (error) {
-    res.status(500).json({ error: 'Error creating attraction', details: error });
+    console.error('Error creating attraction:', error);
+    res.status(500).json({ error: 'Error creating attraction', details: error instanceof Error ? error.message : error });
   }
 });
 
@@ -128,7 +136,8 @@ apiRouter.get('/shows', async (req, res) => {
     });
     res.json(shows);
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching shows', details: error });
+    console.error('Error fetching shows:', error);
+    res.status(500).json({ error: 'Error fetching shows', details: error instanceof Error ? error.message : error });
   }
 });
 
@@ -139,7 +148,8 @@ apiRouter.post('/shows', async (req, res) => {
     });
     res.status(201).json(show);
   } catch (error) {
-    res.status(500).json({ error: 'Error creating show', details: error });
+    console.error('Error creating show:', error);
+    res.status(500).json({ error: 'Error creating show', details: error instanceof Error ? error.message : error });
   }
 });
 
@@ -151,7 +161,8 @@ apiRouter.get('/restaurants', async (req, res) => {
     });
     res.json(restaurants);
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching restaurants', details: error });
+    console.error('Error fetching restaurants:', error);
+    res.status(500).json({ error: 'Error fetching restaurants', details: error instanceof Error ? error.message : error });
   }
 });
 
@@ -162,7 +173,8 @@ apiRouter.post('/restaurants', async (req, res) => {
     });
     res.status(201).json(restaurant);
   } catch (error) {
-    res.status(500).json({ error: 'Error creating restaurant', details: error });
+    console.error('Error creating restaurant:', error);
+    res.status(500).json({ error: 'Error creating restaurant', details: error instanceof Error ? error.message : error });
   }
 });
 
