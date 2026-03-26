@@ -1,0 +1,187 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["RCManager"]
+}
+
+enum ParkStatus {
+  OPEN
+  CLOSED
+  UNDER_CONSTRUCTION
+
+  @@schema("RCManager")
+}
+
+enum CoasterStatus {
+  OPERATING
+  SBNO
+  REMOVED
+  UNDER_CONSTRUCTION
+
+  @@schema("RCManager")
+}
+
+enum AttractionStatus {
+  OPERATING
+  CLOSED
+  REMOVED
+  UNDER_CONSTRUCTION
+
+  @@schema("RCManager")
+}
+
+enum ShowStatus {
+  OPERATIONAL
+  CLOSED
+  REMOVED
+
+  @@schema("RCManager")
+}
+
+enum RestaurantStatus {
+  OPERATIONAL
+  CLOSED
+  REMOVED
+
+  @@schema("RCManager")
+}
+
+enum AttractionType {
+  FLAT_RIDE
+  WATER_RIDE
+  DARK_RIDE
+  SIMULATOR
+  TRANSPORT
+  OTHER
+
+  @@schema("RCManager")
+}
+
+enum ShowType {
+  STUNT
+  MUSICAL
+  PARADE
+  WATER_SHOW
+  KIDS_SHOW
+  OTHER
+
+  @@schema("RCManager")
+}
+
+enum CuisineType {
+  FAST_FOOD
+  BUFFET
+  TABLE_SERVICE
+  CAFE
+  SNACKS
+  OTHER
+
+  @@schema("RCManager")
+}
+
+model Operator {
+  id        Int      @id @default(autoincrement())
+  name      String
+  slug      String   @unique
+  country   String?
+  website   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  parks     Park[]
+
+  @@schema("RCManager")
+}
+
+model Park {
+  id          Int          @id @default(autoincrement())
+  name        String
+  slug        String       @unique
+  country     String
+  city        String?
+  openingYear Int?
+  status      ParkStatus?  @default(OPEN)
+  website     String?
+  operatorId  Int?
+  operator    Operator?    @relation(fields: [operatorId], references: [id])
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  coasters    Coaster[]
+  attractions Attraction[]
+  shows       Show[]
+  restaurants Restaurant[]
+
+  @@schema("RCManager")
+}
+
+model Coaster {
+  id           Int            @id @default(autoincrement())
+  name         String
+  slug         String         @unique
+  parkId       Int
+  park         Park           @relation(fields: [parkId], references: [id], onDelete: Cascade)
+  status       CoasterStatus? @default(OPERATING)
+  manufacturer String?
+  model        String?
+  openingYear  Int?
+  height       Float?
+  length       Float?
+  speed        Float?
+  inversions   Int?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@schema("RCManager")
+}
+
+model Attraction {
+  id           Int               @id @default(autoincrement())
+  name         String
+  slug         String            @unique
+  parkId       Int
+  park         Park              @relation(fields: [parkId], references: [id], onDelete: Cascade)
+  type         AttractionType
+  manufacturer String?
+  openingYear  Int?
+  status       AttractionStatus? @default(OPERATING)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@schema("RCManager")
+}
+
+model Show {
+  id          Int         @id @default(autoincrement())
+  name        String
+  slug        String      @unique
+  parkId      Int
+  park        Park        @relation(fields: [parkId], references: [id], onDelete: Cascade)
+  type        ShowType
+  location    String?
+  duration    Int?
+  status      ShowStatus? @default(OPERATIONAL)
+  openingYear Int?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@schema("RCManager")
+}
+
+model Restaurant {
+  id           Int               @id @default(autoincrement())
+  name         String
+  slug         String            @unique
+  parkId       Int
+  park         Park              @relation(fields: [parkId], references: [id], onDelete: Cascade)
+  cuisine      CuisineType
+  location     String?
+  tableService Boolean?          @default(false)
+  status       RestaurantStatus? @default(OPERATIONAL)
+  openingYear  Int?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@schema("RCManager")
+}
