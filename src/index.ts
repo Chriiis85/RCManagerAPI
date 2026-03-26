@@ -4,6 +4,7 @@ import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
+import path from 'path';
 
 // Configure environment variables
 dotenv.config();
@@ -19,6 +20,7 @@ const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Create an API router
 const apiRouter = express.Router();
@@ -95,12 +97,81 @@ apiRouter.post('/operators', async (req, res) => {
   }
 });
 
+// --- ATTRACTIONS ---
+apiRouter.get('/attractions', async (req, res) => {
+  try {
+    const attractions = await prisma.attraction.findMany({
+      include: { park: true }
+    });
+    res.json(attractions);
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching attractions', details: error });
+  }
+});
+
+apiRouter.post('/attractions', async (req, res) => {
+  try {
+    const attraction = await prisma.attraction.create({
+      data: req.body
+    });
+    res.status(201).json(attraction);
+  } catch (error) {
+    res.status(500).json({ error: 'Error creating attraction', details: error });
+  }
+});
+
+// --- SHOWS ---
+apiRouter.get('/shows', async (req, res) => {
+  try {
+    const shows = await prisma.show.findMany({
+      include: { park: true }
+    });
+    res.json(shows);
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching shows', details: error });
+  }
+});
+
+apiRouter.post('/shows', async (req, res) => {
+  try {
+    const show = await prisma.show.create({
+      data: req.body
+    });
+    res.status(201).json(show);
+  } catch (error) {
+    res.status(500).json({ error: 'Error creating show', details: error });
+  }
+});
+
+// --- RESTAURANTS ---
+apiRouter.get('/restaurants', async (req, res) => {
+  try {
+    const restaurants = await prisma.restaurant.findMany({
+      include: { park: true }
+    });
+    res.json(restaurants);
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching restaurants', details: error });
+  }
+});
+
+apiRouter.post('/restaurants', async (req, res) => {
+  try {
+    const restaurant = await prisma.restaurant.create({
+      data: req.body
+    });
+    res.status(201).json(restaurant);
+  } catch (error) {
+    res.status(500).json({ error: 'Error creating restaurant', details: error });
+  }
+});
+
 // Mount the router under /api
 app.use('/api', apiRouter);
 
-// Basic welcome route at root
+// Serve dashboard at root
 app.get('/', (req, res) => {
-  res.send('Welcome to RCManager API. Find the API at <a href="/api">/api</a>');
+  res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
 app.listen(PORT, () => {
