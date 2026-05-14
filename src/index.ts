@@ -5,6 +5,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
 import path from 'path';
+import authRouter from './routes/auth';
 
 // Configure environment variables
 dotenv.config();
@@ -15,6 +16,9 @@ const app = express();
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool as any);
 const prisma = new PrismaClient({ adapter });
+
+// Make prisma accessible in routes via req.app.locals
+app.locals.prisma = prisma;
 
 const PORT = process.env.PORT || 3001;
 
@@ -180,6 +184,9 @@ apiRouter.post('/restaurants', async (req: Request, res: Response) => {
 
 // Mount the router under /api
 app.use('/api', apiRouter);
+
+// Mount auth routes under /api/auth
+app.use('/api/auth', authRouter);
 
 // Serve dashboard at root
 app.get('/', (req: Request, res: Response) => {
