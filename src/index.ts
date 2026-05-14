@@ -22,9 +22,32 @@ app.locals.prisma = prisma;
 
 const PORT = process.env.PORT || 3001;
 
-app.use(cors());
+const ALLOWED_ORIGINS = [
+  'https://rcmanager-nine.vercel.app',
+  'https://rcmanager.vercel.app',
+  'http://localhost:4200',
+  'http://localhost:3000',
+];
+
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g. curl, Postman, server-to-server)
+    if (!origin) return callback(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS: Origin "${origin}" not allowed`));
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
+  credentials: true,
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+// Handle preflight OPTIONS for all routes explicitly
+app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
+
 
 // Create an API router
 const apiRouter = express.Router();
