@@ -210,7 +210,8 @@ router.post('/attractions', async (req: AuthenticatedRequest, res: Response) => 
             slug: `${slugBase}-${Date.now()}`,
             parkId: park.id,
             manufacturer: attractionData.manufacturer || null,
-            apiId: attractionId
+            apiId: attractionId,
+            type: 'OTHER'
           }
         });
       }
