@@ -10,12 +10,29 @@ import authRouter from './routes/auth';
 // Configure environment variables
 dotenv.config();
 
+// ── Singleton Prisma para entornos serverless (Vercel) ───────────────────────
+// Evita crear múltiples conexiones en cada invocación
+declare global {
+  // eslint-disable-next-line no-var
+  var __prisma: PrismaClient | undefined;
+}
+
+function getPrismaClient(): PrismaClient {
+  if (!global.__prisma) {
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+      max: 1, // Importante para serverless
+    });
+    const adapter = new PrismaPg(pool as any);
+    global.__prisma = new PrismaClient({ adapter });
+  }
+  return global.__prisma;
+}
+
 const app = express();
 
-// Initialize PostgreSQL driver adapter (Required for Prisma 7)
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const adapter = new PrismaPg(pool as any);
-const prisma = new PrismaClient({ adapter });
+const prisma = getPrismaClient();
 
 // Make prisma accessible in routes via req.app.locals
 app.locals.prisma = prisma;
