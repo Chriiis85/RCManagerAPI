@@ -15,13 +15,16 @@ enum UserRole {
 }
 
 model User {
-  id           Int       @id @default(autoincrement())
-  username     String    @unique
-  email        String    @unique
-  passwordHash String
-  role         UserRole  @default(USER)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id                Int                @id @default(autoincrement())
+  username          String             @unique
+  email             String             @unique
+  passwordHash      String
+  role              UserRole           @default(USER)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  coasterCredits    CoasterCredit[]
+  attractionsRidden AttractionRecord[]
+  parksVisited      ParkVisit[]
 
   @@schema("RCManager")
 }
@@ -135,6 +138,7 @@ model Park {
   attractions Attraction[]
   shows       Show[]
   restaurants Restaurant[]
+  visitors    ParkVisit[]
 
   @@schema("RCManager")
 }
@@ -157,6 +161,7 @@ model Coaster {
   updatedAt    DateTime       @updatedAt
   imageUrl     String?
   apiId        Int?
+  credits      CoasterCredit[]
 
   @@schema("RCManager")
 }
@@ -175,6 +180,7 @@ model Attraction {
   updatedAt    DateTime          @updatedAt
   imageUrl     String?
   apiId        Int?
+  records      AttractionRecord[]
 
   @@schema("RCManager")
 }
@@ -214,5 +220,52 @@ model Restaurant {
   imageUrl     String?
   apiId        Int?
 
+  @@schema("RCManager")
+}
+
+// ── REGISTRO DE USUARIOS (Credits, Atracciones, Parques) ──────────────
+
+model CoasterCredit {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  coasterId Int
+  rideDate  DateTime? 
+  rating    Int?      
+  review    String?   
+  createdAt DateTime  @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coaster   Coaster   @relation(fields: [coasterId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, coasterId]) 
+  @@schema("RCManager")
+}
+
+model AttractionRecord {
+  id           Int        @id @default(autoincrement())
+  userId       Int
+  attractionId Int
+  rideDate     DateTime?
+  rating       Int?
+  createdAt    DateTime   @default(now())
+
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attraction   Attraction @relation(fields: [attractionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, attractionId])
+  @@schema("RCManager")
+}
+
+model ParkVisit {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  parkId    Int
+  visitDate DateTime?
+  createdAt DateTime  @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  park      Park      @relation(fields: [parkId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, parkId])
   @@schema("RCManager")
 }
