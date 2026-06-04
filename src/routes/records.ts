@@ -38,22 +38,55 @@ router.post('/credits', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const prisma = getPrisma(req);
     const userId = req.user!.userId;
-    const { coasterId, rideDate, rating, review } = req.body;
+    const { coasterId, rideDate, rating, review, coasterData } = req.body;
 
     if (!coasterId) {
       res.status(400).json({ error: 'coasterId es obligatorio.' });
       return;
     }
 
+    let localCoasterId = coasterId;
+
+    if (coasterData) {
+      let coaster = await prisma.coaster.findFirst({ where: { apiId: coasterId } });
+      if (!coaster) {
+        // Find or create the park first
+        let park = await prisma.park.findFirst({ where: { apiId: coasterData.parkApiId } });
+        if (!park) {
+          const parkName = coasterData.park || 'Parque Desconocido';
+          const slugBase = parkName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+          park = await prisma.park.create({
+            data: {
+              name: parkName,
+              slug: `${slugBase}-${Date.now()}`,
+              country: coasterData.country || 'Desconocido',
+              apiId: coasterData.parkApiId || null
+            }
+          });
+        }
+        const slugBase = coasterData.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        coaster = await prisma.coaster.create({
+          data: {
+            name: coasterData.name,
+            slug: `${slugBase}-${Date.now()}`,
+            parkId: park.id,
+            manufacturer: coasterData.manufacturer || null,
+            apiId: coasterId
+          }
+        });
+      }
+      localCoasterId = coaster.id;
+    }
+
     const credit = await prisma.coasterCredit.create({
       data: {
         userId,
-        coasterId,
+        coasterId: localCoasterId,
         rideDate: rideDate ? new Date(rideDate) : new Date(),
         rating,
         review
       },
-      include: { coaster: true }
+      include: { coaster: { include: { park: true } } }
     });
 
     res.status(201).json(credit);
@@ -74,19 +107,19 @@ router.delete('/credits/:coasterId', async (req: AuthenticatedRequest, res: Resp
     const userId = req.user!.userId;
     const coasterId = Number(req.params.coasterId);
 
-    await prisma.coasterCredit.delete({
-      where: {
-        userId_coasterId: { userId, coasterId }
-      }
+    let localCoasterId = coasterId;
+    const coasterByApiId = await prisma.coaster.findFirst({ where: { apiId: coasterId } });
+    if (coasterByApiId) {
+      localCoasterId = coasterByApiId.id;
+    }
+
+    await prisma.coasterCredit.deleteMany({
+      where: { userId, coasterId: localCoasterId }
     });
 
     res.json({ message: 'Credit eliminado correctamente.' });
   } catch (error: any) {
     console.error('Error deleting credit:', error);
-    if (error.code === 'P2025') {
-      res.status(404).json({ error: 'Credit no encontrado.' });
-      return;
-    }
     res.status(500).json({ error: 'Error interno al eliminar el credit.' });
   }
 });
@@ -119,21 +152,53 @@ router.post('/attractions', async (req: AuthenticatedRequest, res: Response) => 
   try {
     const prisma = getPrisma(req);
     const userId = req.user!.userId;
-    const { attractionId, rideDate, rating } = req.body;
+    const { attractionId, rideDate, rating, attractionData } = req.body;
 
     if (!attractionId) {
       res.status(400).json({ error: 'attractionId es obligatorio.' });
       return;
     }
 
+    let localAttractionId = attractionId;
+
+    if (attractionData) {
+      let attraction = await prisma.attraction.findFirst({ where: { apiId: attractionId } });
+      if (!attraction) {
+        let park = await prisma.park.findFirst({ where: { apiId: attractionData.parkApiId } });
+        if (!park) {
+          const parkName = attractionData.park || 'Parque Desconocido';
+          const slugBase = parkName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+          park = await prisma.park.create({
+            data: {
+              name: parkName,
+              slug: `${slugBase}-${Date.now()}`,
+              country: attractionData.country || 'Desconocido',
+              apiId: attractionData.parkApiId || null
+            }
+          });
+        }
+        const slugBase = attractionData.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        attraction = await prisma.attraction.create({
+          data: {
+            name: attractionData.name,
+            slug: `${slugBase}-${Date.now()}`,
+            parkId: park.id,
+            manufacturer: attractionData.manufacturer || null,
+            apiId: attractionId
+          }
+        });
+      }
+      localAttractionId = attraction.id;
+    }
+
     const record = await prisma.attractionRecord.create({
       data: {
         userId,
-        attractionId,
+        attractionId: localAttractionId,
         rideDate: rideDate ? new Date(rideDate) : new Date(),
         rating
       },
-      include: { attraction: true }
+      include: { attraction: { include: { park: true } } }
     });
 
     res.status(201).json(record);
@@ -153,19 +218,19 @@ router.delete('/attractions/:attractionId', async (req: AuthenticatedRequest, re
     const userId = req.user!.userId;
     const attractionId = Number(req.params.attractionId);
 
-    await prisma.attractionRecord.delete({
-      where: {
-        userId_attractionId: { userId, attractionId }
-      }
+    let localAttractionId = attractionId;
+    const attrByApiId = await prisma.attraction.findFirst({ where: { apiId: attractionId } });
+    if (attrByApiId) {
+      localAttractionId = attrByApiId.id;
+    }
+
+    await prisma.attractionRecord.deleteMany({
+      where: { userId, attractionId: localAttractionId }
     });
 
     res.json({ message: 'Registro de atracción eliminado.' });
   } catch (error: any) {
     console.error('Error deleting attraction:', error);
-    if (error.code === 'P2025') {
-      res.status(404).json({ error: 'Registro no encontrado.' });
-      return;
-    }
     res.status(500).json({ error: 'Error interno al eliminar la atracción.' });
   }
 });
