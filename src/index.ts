@@ -39,11 +39,33 @@ app.locals.prisma = prisma;
 
 const PORT = process.env.PORT || 3001;
 
-app.use(cors({
+// ── CORS — configuración robusta para Vercel serverless ──────────────────────
+const corsOptions = {
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: false,
+  optionsSuccessStatus: 204,
+};
+
+// Aplicar CORS a todas las rutas
+app.use(cors(corsOptions));
+
+// Responder explícitamente a TODOS los preflight OPTIONS antes de cualquier ruta
+// Esto es crítico en entornos serverless como Vercel
+app.options('*', cors(corsOptions));
+
+// Middleware de seguridad: forzar cabeceras CORS en TODAS las respuestas
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With');
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
