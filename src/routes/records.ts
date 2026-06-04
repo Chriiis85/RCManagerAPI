@@ -194,17 +194,35 @@ router.post('/parks', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const prisma = getPrisma(req);
     const userId = req.user!.userId;
-    const { parkId, visitDate } = req.body;
+    const { parkId, visitDate, parkData } = req.body;
 
     if (!parkId) {
       res.status(400).json({ error: 'parkId es obligatorio.' });
       return;
     }
 
+    let localParkId = parkId;
+
+    if (parkData) {
+      // Find or create park based on apiId
+      let park = await prisma.park.findFirst({ where: { apiId: parkId } });
+      if (!park) {
+        park = await prisma.park.create({
+          data: {
+            name: parkData.name || 'Parque Desconocido',
+            slug: (parkData.name || `park-${parkId}`).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+            country: parkData.country || 'Desconocido',
+            apiId: parkId
+          }
+        });
+      }
+      localParkId = park.id;
+    }
+
     const visit = await prisma.parkVisit.create({
       data: {
         userId,
-        parkId,
+        parkId: localParkId,
         visitDate: visitDate ? new Date(visitDate) : new Date()
       },
       include: { park: true }
@@ -227,9 +245,16 @@ router.delete('/parks/:parkId', async (req: AuthenticatedRequest, res: Response)
     const userId = req.user!.userId;
     const parkId = Number(req.params.parkId);
 
-    await prisma.parkVisit.delete({
+    let localParkId = parkId;
+    const parkByApiId = await prisma.park.findFirst({ where: { apiId: parkId } });
+    if (parkByApiId) {
+      localParkId = parkByApiId.id;
+    }
+
+    await prisma.parkVisit.deleteMany({
       where: {
-        userId_parkId: { userId, parkId }
+        userId,
+        parkId: localParkId
       }
     });
 
