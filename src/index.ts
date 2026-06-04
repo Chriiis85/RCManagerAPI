@@ -51,11 +51,8 @@ const corsOptions = {
 // Aplicar CORS a todas las rutas
 app.use(cors(corsOptions));
 
-// Responder explícitamente a TODOS los preflight OPTIONS antes de cualquier ruta
-// Esto es crítico en entornos serverless como Vercel
-app.options('*', cors(corsOptions));
-
-// Middleware de seguridad: forzar cabeceras CORS en TODAS las respuestas
+// Middleware: forzar cabeceras CORS y responder preflight OPTIONS en todas las rutas
+// Debe estar ANTES de cualquier ruta para que funcione en Vercel serverless
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
