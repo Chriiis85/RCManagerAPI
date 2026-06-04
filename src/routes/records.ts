@@ -124,6 +124,32 @@ router.delete('/credits/:coasterId', async (req: AuthenticatedRequest, res: Resp
   }
 });
 
+// Actualizar número de veces montado (rating field)
+router.patch('/credits/:id', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const prisma = getPrisma(req);
+    const userId = req.user!.userId;
+    const id = Number(req.params.id);
+    const { rating } = req.body;
+
+    const credit = await prisma.coasterCredit.updateMany({
+      where: { id, userId },
+      data: { rating }
+    });
+
+    if (credit.count === 0) {
+      res.status(404).json({ error: 'Credit no encontrado.' });
+      return;
+    }
+
+    const updated = await prisma.coasterCredit.findFirst({ where: { id }, include: { coaster: { include: { park: true } } } });
+    res.json(updated);
+  } catch (error) {
+    console.error('Error updating credit count:', error);
+    res.status(500).json({ error: 'Error interno al actualizar el credit.' });
+  }
+});
+
 // ── ATTRACTION RECORDS ───────────────────────────────────────────────────────
 
 router.get('/attractions', async (req: AuthenticatedRequest, res: Response) => {
@@ -232,6 +258,32 @@ router.delete('/attractions/:attractionId', async (req: AuthenticatedRequest, re
   } catch (error: any) {
     console.error('Error deleting attraction:', error);
     res.status(500).json({ error: 'Error interno al eliminar la atracción.' });
+  }
+});
+
+// Actualizar número de veces visitada (rating field)
+router.patch('/attractions/:id', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const prisma = getPrisma(req);
+    const userId = req.user!.userId;
+    const id = Number(req.params.id);
+    const { rating } = req.body;
+
+    const record = await prisma.attractionRecord.updateMany({
+      where: { id, userId },
+      data: { rating }
+    });
+
+    if (record.count === 0) {
+      res.status(404).json({ error: 'Registro no encontrado.' });
+      return;
+    }
+
+    const updated = await prisma.attractionRecord.findFirst({ where: { id }, include: { attraction: { include: { park: true } } } });
+    res.json(updated);
+  } catch (error) {
+    console.error('Error updating attraction count:', error);
+    res.status(500).json({ error: 'Error interno al actualizar la atracción.' });
   }
 });
 
