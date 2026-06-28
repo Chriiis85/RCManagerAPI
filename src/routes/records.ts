@@ -45,25 +45,47 @@ router.post('/credits', async (req: AuthenticatedRequest, res: Response) => {
       return;
     }
 
-    let localCoasterId = coasterId;
+    let localCoasterId: number;
 
     if (coasterData) {
-      let coaster = await prisma.coaster.findFirst({ where: { apiId: coasterId } });
+      // 1. Buscar el coaster en local por su apiId externo O por su id interno si el frontend ya mandó el ID local
+      let coaster = await prisma.coaster.findFirst({ 
+        where: { 
+          OR: [
+            { apiId: Number(coasterId) },
+            { id: Number(coasterId) }
+          ]
+        } 
+      });
+
       if (!coaster) {
-        // Find or create the park first
-        let park = await prisma.park.findFirst({ where: { apiId: coasterData.parkApiId } });
+        // 2. Buscar el parque: primero por apiId si viene, si no por nombre exacto
+        const parkName = coasterData.park || 'Parque Desconocido';
+        let park = null;
+
+        if (coasterData.parkApiId) {
+          park = await prisma.park.findFirst({ where: { apiId: Number(coasterData.parkApiId) } });
+        }
+
+        // Si no se encontró por apiId, buscar por nombre para no crear duplicados
         if (!park) {
-          const parkName = coasterData.park || 'Parque Desconocido';
+          park = await prisma.park.findFirst({ where: { name: parkName } });
+        }
+
+        // Solo crear el parque si realmente no existe
+        if (!park) {
           const slugBase = parkName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
           park = await prisma.park.create({
             data: {
               name: parkName,
               slug: `${slugBase}-${Date.now()}`,
               country: coasterData.country || 'Desconocido',
-              apiId: coasterData.parkApiId || null
+              apiId: coasterData.parkApiId ? Number(coasterData.parkApiId) : null
             }
           });
         }
+
+        // 3. Crear el coaster vinculado al parque encontrado/creado
         const slugBase = coasterData.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
         coaster = await prisma.coaster.create({
           data: {
@@ -71,11 +93,24 @@ router.post('/credits', async (req: AuthenticatedRequest, res: Response) => {
             slug: `${slugBase}-${Date.now()}`,
             parkId: park.id,
             manufacturer: coasterData.manufacturer || null,
-            apiId: coasterId
+            apiId: Number(coasterId)
           }
         });
       }
+
       localCoasterId = coaster.id;
+    } else {
+      localCoasterId = Number(coasterId);
+    }
+
+    // 4. Comprobación de duplicado: el @@unique([userId, coasterId]) en el schema ya lo garantiza,
+    //    pero hacemos la comprobación explícita para devolver un 409 limpio
+    const existing = await prisma.coasterCredit.findFirst({
+      where: { userId, coasterId: localCoasterId }
+    });
+    if (existing) {
+      res.status(409).json({ error: 'Ya tienes registrado este credit.' });
+      return;
     }
 
     const credit = await prisma.coasterCredit.create({
@@ -185,24 +220,42 @@ router.post('/attractions', async (req: AuthenticatedRequest, res: Response) => 
       return;
     }
 
-    let localAttractionId = attractionId;
+    let localAttractionId: number;
 
     if (attractionData) {
-      let attraction = await prisma.attraction.findFirst({ where: { apiId: attractionId } });
+      let attraction = await prisma.attraction.findFirst({ 
+        where: { 
+          OR: [
+            { apiId: Number(attractionId) },
+            { id: Number(attractionId) }
+          ]
+        } 
+      });
+
       if (!attraction) {
-        let park = await prisma.park.findFirst({ where: { apiId: attractionData.parkApiId } });
+        let park = null;
+        const parkName = attractionData.park || 'Parque Desconocido';
+        
+        if (attractionData.parkApiId) {
+          park = await prisma.park.findFirst({ where: { apiId: Number(attractionData.parkApiId) } });
+        }
+
         if (!park) {
-          const parkName = attractionData.park || 'Parque Desconocido';
+          park = await prisma.park.findFirst({ where: { name: parkName } });
+        }
+
+        if (!park) {
           const slugBase = parkName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
           park = await prisma.park.create({
             data: {
               name: parkName,
               slug: `${slugBase}-${Date.now()}`,
               country: attractionData.country || 'Desconocido',
-              apiId: attractionData.parkApiId || null
+              apiId: attractionData.parkApiId ? Number(attractionData.parkApiId) : null
             }
           });
         }
+
         const slugBase = attractionData.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
         attraction = await prisma.attraction.create({
           data: {
@@ -210,12 +263,22 @@ router.post('/attractions', async (req: AuthenticatedRequest, res: Response) => 
             slug: `${slugBase}-${Date.now()}`,
             parkId: park.id,
             manufacturer: attractionData.manufacturer || null,
-            apiId: attractionId,
+            apiId: Number(attractionId),
             type: 'OTHER'
           }
         });
       }
       localAttractionId = attraction.id;
+    } else {
+      localAttractionId = Number(attractionId);
+    }
+
+    const existing = await prisma.attractionRecord.findFirst({
+      where: { userId, attractionId: localAttractionId }
+    });
+    if (existing) {
+      res.status(409).json({ error: 'Ya tienes registrada esta atracción.' });
+      return;
     }
 
     const record = await prisma.attractionRecord.create({
