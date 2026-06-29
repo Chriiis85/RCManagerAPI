@@ -225,9 +225,13 @@ apiRouter.post('/restaurants', async (req: Request, res: Response) => {
 });
 
 import recordsRouter from './routes/records';
+import tripsRouter from './routes/trips';
+import usersRouter from './routes/users';
 
 // Mount the router under /api
 app.use('/api', apiRouter);
+app.use('/api/trips', tripsRouter);
+app.use('/api/users', usersRouter);
 
 // Mount auth routes under /api/auth
 app.use('/api/auth', authRouter);

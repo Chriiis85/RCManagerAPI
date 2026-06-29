@@ -1,0 +1,97 @@
+import { Router, Request, Response } from 'express';
+import { PrismaClient } from '@prisma/client';
+import { authenticateToken } from '../middleware/auth';
+
+const router = Router();
+const getPrisma = (req: Request): PrismaClient => (req.app.locals.prisma as PrismaClient);
+
+const TRIP_INCLUDE = {
+  park: true,
+  companions: {
+    include: {
+      user: { select: { id: true, username: true, email: true } }
+    }
+  },
+  user: { select: { id: true, username: true } }
+};
+
+// GET /api/trips — trips for auth user (owned + joined)
+router.get('/', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId;
+    const prisma = getPrisma(req);
+
+    const trips = await prisma.trip.findMany({
+      where: {
+        OR: [
+          { userId },
+          { companions: { some: { userId } } }
+        ]
+      },
+      include: TRIP_INCLUDE,
+      orderBy: { targetDate: 'asc' }
+    });
+
+    res.json(trips);
+  } catch (error) {
+    console.error('Error fetching trips:', error);
+    res.status(500).json({ error: 'Error fetching trips', details: error instanceof Error ? error.message : error });
+  }
+});
+
+// POST /api/trips — create a new trip
+router.post('/', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId;
+    const { parkId, title, description, targetDate, endDate, companions } = req.body;
+    const prisma = getPrisma(req);
+
+    if (!parkId || !targetDate) {
+      res.status(400).json({ error: 'parkId y targetDate son obligatorios.' });
+      return;
+    }
+
+    const newTrip = await prisma.trip.create({
+      data: {
+        userId,
+        parkId,
+        title: title || null,
+        description: description || null,
+        targetDate: new Date(targetDate),
+        endDate: endDate ? new Date(endDate) : null,
+        companions: {
+          create: companions
+            ? companions.map((cId: number) => ({ userId: cId, status: 'ACCEPTED' }))
+            : []
+        }
+      },
+      include: TRIP_INCLUDE
+    });
+
+    res.status(201).json(newTrip);
+  } catch (error) {
+    console.error('Error creating trip:', error);
+    res.status(500).json({ error: 'Error creating trip', details: error instanceof Error ? error.message : error });
+  }
+});
+
+// DELETE /api/trips/:id — delete a trip
+router.delete('/:id', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId;
+    const tripId = parseInt(req.params['id'] as string);
+    const prisma = getPrisma(req);
+
+    const trip = await prisma.trip.findUnique({ where: { id: tripId } });
+    if (!trip) { res.status(404).json({ error: 'Viaje no encontrado.' }); return; }
+    if (trip.userId !== userId) { res.status(403).json({ error: 'No tienes permiso.' }); return; }
+
+    await prisma.trip.delete({ where: { id: tripId } });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting trip:', error);
+    res.status(500).json({ error: 'Error deleting trip', details: error instanceof Error ? error.message : error });
+  }
+});
+
+export default router;
