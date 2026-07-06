@@ -125,6 +125,80 @@ router.post('/login', async (req: Request, res: Response) => {
   }
 });
 
+// ── POST /api/auth/supabase ──────────────────────────────────────────────────
+router.post('/supabase', async (req: Request, res: Response) => {
+  try {
+    const { access_token } = req.body;
+    if (!access_token) {
+      res.status(400).json({ error: 'access_token es obligatorio.' });
+      return;
+    }
+
+    const supabaseUrl = 'https://qgxpnuesyxwbexavydnp.supabase.co';
+    const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFneHBudWVzeXh3YmV4YXZ5ZG5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzODU1OTgsImV4cCI6MjA4OTk2MTU5OH0.BrBqXjWINCUdA-CMjw1GlKzkJ0UPWYaicCVNo1RRHHc';
+
+    const supRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: {
+        Authorization: `Bearer ${access_token}`,
+        apikey: supabaseAnonKey
+      }
+    });
+
+    if (!supRes.ok) {
+      res.status(401).json({ error: 'Token de Supabase inválido.' });
+      return;
+    }
+
+    const supUser = await supRes.json();
+    const email = supUser.email;
+    const username = supUser.user_metadata?.full_name || email.split('@')[0];
+
+    const prisma = getPrisma(req);
+    let user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
+      const randomPassword = await bcrypt.hash(Math.random().toString(36).slice(-10), 10);
+      
+      let uniqueUsername = username;
+      let counter = 1;
+      while (await prisma.user.findUnique({ where: { username: uniqueUsername } })) {
+        uniqueUsername = `${username}${counter}`;
+        counter++;
+      }
+
+      user = await prisma.user.create({
+        data: {
+          email,
+          username: uniqueUsername,
+          passwordHash: randomPassword
+        }
+      });
+    }
+
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions
+    );
+
+    res.json({
+      message: 'Sesión iniciada correctamente mediante Supabase.',
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        createdAt: user.createdAt
+      }
+    });
+
+  } catch (error) {
+    console.error('Error en /supabase:', error);
+    res.status(500).json({ error: 'Error interno en autenticación Supabase.' });
+  }
+});
+
 // ── GET /api/auth/me ─────────────────────────────────────────────────────────
 // Ruta protegida: devuelve el perfil del usuario autenticado
 router.get('/me', async (req: Request, res: Response) => {
