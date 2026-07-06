@@ -382,22 +382,42 @@ router.post('/parks', async (req: AuthenticatedRequest, res: Response) => {
       return;
     }
 
-    let localParkId = parkId;
+    let localParkId: number;
 
     if (parkData) {
-      // Find or create park based on apiId
-      let park = await prisma.park.findFirst({ where: { apiId: parkId } });
+      const parkName = parkData.name || 'Parque Desconocido';
+
+      // 1. Buscar por apiId primero
+      let park = await prisma.park.findFirst({ where: { apiId: Number(parkId) } });
+
+      // 2. Si no existe por apiId, buscar por nombre (puede haber sido creado desde credits sin apiId)
       if (!park) {
+        park = await prisma.park.findFirst({ where: { name: parkName } });
+        if (park) {
+          // Actualizar el apiId ahora que lo sabemos, para que futuros lookups funcionen
+          park = await prisma.park.update({
+            where: { id: park.id },
+            data: { apiId: Number(parkId) }
+          });
+        }
+      }
+
+      // 3. Si aun no existe, crear el parque
+      if (!park) {
+        const slugBase = parkName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
         park = await prisma.park.create({
           data: {
-            name: parkData.name || 'Parque Desconocido',
-            slug: (parkData.name || `park-${parkId}`).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+            name: parkName,
+            slug: `${slugBase}-${Date.now()}`,
             country: parkData.country || 'Desconocido',
-            apiId: parkId
+            apiId: Number(parkId)
           }
         });
       }
+
       localParkId = park.id;
+    } else {
+      localParkId = Number(parkId);
     }
 
     // Comprobar si ya existe una visita para evitar el P2002
