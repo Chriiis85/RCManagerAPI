@@ -479,4 +479,30 @@ router.delete('/parks/:parkId', async (req: AuthenticatedRequest, res: Response)
   }
 });
 
+// Actualizar número de veces visitado (rating field)
+router.patch('/parks/:id', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const prisma = getPrisma(req);
+    const userId = req.user!.userId;
+    const id = Number(req.params.id);
+    const { rating } = req.body;
+
+    const visit = await prisma.parkVisit.updateMany({
+      where: { id, userId },
+      data: { rating }
+    });
+
+    if (visit.count === 0) {
+      res.status(404).json({ error: 'Registro no encontrado.' });
+      return;
+    }
+
+    const updated = await prisma.parkVisit.findFirst({ where: { id }, include: { park: true } });
+    res.json(updated);
+  } catch (error) {
+    console.error('Error updating park count:', error);
+    res.status(500).json({ error: 'Error interno al actualizar el parque.' });
+  }
+});
+
 export default router;
