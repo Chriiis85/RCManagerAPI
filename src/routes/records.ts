@@ -400,6 +400,15 @@ router.post('/parks', async (req: AuthenticatedRequest, res: Response) => {
       localParkId = park.id;
     }
 
+    // Comprobar si ya existe una visita para evitar el P2002
+    const existing = await prisma.parkVisit.findFirst({
+      where: { userId, parkId: localParkId }
+    });
+    if (existing) {
+      res.status(409).json({ error: 'Ya tienes registrado este parque.', visit: existing });
+      return;
+    }
+
     const visit = await prisma.parkVisit.create({
       data: {
         userId,
