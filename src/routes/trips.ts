@@ -118,6 +118,41 @@ router.post('/:id/companions', authenticateToken, async (req: Request, res: Resp
   }
 });
 
+// DELETE /api/trips/:id/companions/:userId — remove a companion from a trip
+router.delete('/:id/companions/:userId', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const currentUserId = (req as any).user.userId;
+    const tripId = parseInt(req.params['id'] as string);
+    const targetUserId = parseInt(req.params['userId'] as string);
+    const prisma = getPrisma(req);
+
+    const trip = await prisma.trip.findUnique({ where: { id: tripId } });
+    if (!trip) { res.status(404).json({ error: 'Viaje no encontrado.' }); return; }
+    
+    // Only the trip owner or the companion themselves can remove the companion
+    if (trip.userId !== currentUserId && currentUserId !== targetUserId) { 
+      res.status(403).json({ error: 'No tienes permiso.' }); return; 
+    }
+
+    await prisma.tripCompanion.deleteMany({
+      where: {
+        tripId,
+        userId: targetUserId
+      }
+    });
+
+    const updatedTrip = await prisma.trip.findUnique({
+      where: { id: tripId },
+      include: TRIP_INCLUDE
+    });
+
+    res.json(updatedTrip);
+  } catch (error) {
+    console.error('Error removing companion:', error);
+    res.status(500).json({ error: 'Error removing companion', details: error instanceof Error ? error.message : error });
+  }
+});
+
 // DELETE /api/trips/:id — delete a trip
 router.delete('/:id', authenticateToken, async (req: Request, res: Response) => {
   try {
