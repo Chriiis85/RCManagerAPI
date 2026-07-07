@@ -37,7 +37,7 @@ router.post('/register', async (req: Request, res: Response) => {
     });
     if (existing) {
       if (existing.email === email) {
-        res.status(409).json({ error: 'El email ya está registrado.' });
+        res.status(409).json({ error: 'El email ya está registrado. Si usaste Google o Apple, inicia sesión con ese botón.' });
         return;
       }
       res.status(409).json({ error: 'El nombre de usuario ya está en uso.' });
@@ -92,14 +92,14 @@ router.post('/login', async (req: Request, res: Response) => {
     // Buscar usuario
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      res.status(401).json({ error: 'Credenciales incorrectas.' });
+      res.status(401).json({ error: 'Credenciales incorrectas o usuario no encontrado.' });
       return;
     }
 
     // Verificar contraseña
     const passwordMatch = await bcrypt.compare(password, user.passwordHash);
     if (!passwordMatch) {
-      res.status(401).json({ error: 'Credenciales incorrectas.' });
+      res.status(401).json({ error: 'Credenciales incorrectas. Si creaste tu cuenta con Google o Apple, usa ese botón para entrar.' });
       return;
     }
 
