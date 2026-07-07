@@ -34,4 +34,38 @@ router.get('/search', authenticateToken, async (req: Request, res: Response) => 
   }
 });
 
+// Update user profile
+router.put('/profile', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const currentUserId = (req as any).user.id;
+    const { firstName, lastName, profileImage } = req.body;
+    const prisma = getPrisma(req);
+
+    const updatedUser = await prisma.user.update({
+      where: { id: currentUserId },
+      data: {
+        firstName: firstName !== undefined ? firstName : undefined,
+        lastName: lastName !== undefined ? lastName : undefined,
+        profileImage: profileImage !== undefined ? profileImage : undefined,
+      },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        role: true,
+        firstName: true,
+        lastName: true,
+        profileImage: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+
+    res.json(updatedUser);
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ error: 'Error updating profile', details: error instanceof Error ? error.message : error });
+  }
+});
+
 export default router;
