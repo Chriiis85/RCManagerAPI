@@ -34,16 +34,46 @@ router.get('/search', authenticateToken, async (req: Request, res: Response) => 
   }
 });
 
+// Helper to generate unique username suggestions
+async function generateUniqueUsernames(baseUsername: string, prisma: PrismaClient): Promise<string[]> {
+  const suggestions: string[] = [];
+  let attempts = 0;
+  
+  while (suggestions.length < 3 && attempts < 10) {
+    const randomSuffix = Math.floor(Math.random() * 1000);
+    const suggestion = `${baseUsername}${randomSuffix}`;
+    const exists = await prisma.user.findUnique({ where: { username: suggestion } });
+    if (!exists) {
+      suggestions.push(suggestion);
+    }
+    attempts++;
+  }
+  return suggestions;
+}
+
 // Update user profile
 router.put('/profile', authenticateToken, async (req: Request, res: Response) => {
   try {
     const currentUserId = (req as any).user.userId;
-    const { firstName, lastName, profileImage } = req.body;
+    const { firstName, lastName, profileImage, username } = req.body;
     const prisma = getPrisma(req);
 
     if (!currentUserId) {
       res.status(401).json({ error: 'User ID missing from token' });
       return;
+    }
+
+    // Comprobar si quiere cambiar el username y si ya existe
+    if (username) {
+      const existingUser = await prisma.user.findUnique({ where: { username } });
+      if (existingUser && existingUser.id !== currentUserId) {
+        const suggestions = await generateUniqueUsernames(username, prisma);
+        res.status(409).json({ 
+          error: 'El nombre de usuario ya está en uso.',
+          suggestions 
+        });
+        return;
+      }
     }
 
     const updatedUser = await prisma.user.update({
@@ -52,6 +82,7 @@ router.put('/profile', authenticateToken, async (req: Request, res: Response) =>
         firstName: firstName !== undefined ? firstName : undefined,
         lastName: lastName !== undefined ? lastName : undefined,
         profileImage: profileImage !== undefined ? profileImage : undefined,
+        username: username !== undefined ? username : undefined,
       },
       select: {
         id: true,
