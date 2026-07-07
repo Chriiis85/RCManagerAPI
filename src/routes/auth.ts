@@ -51,7 +51,7 @@ router.post('/register', async (req: Request, res: Response) => {
     // Crear usuario
     const user = await prisma.user.create({
       data: { username, email, passwordHash },
-      select: { id: true, username: true, email: true, role: true, createdAt: true }
+      select: { id: true, username: true, email: true, role: true, firstName: true, lastName: true, profileImage: true, createdAt: true }
     });
 
     // Generar token
@@ -118,6 +118,9 @@ router.post('/login', async (req: Request, res: Response) => {
         username: user.username,
         email: user.email,
         role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        profileImage: user.profileImage,
         createdAt: user.createdAt
       }
     });
@@ -194,6 +197,9 @@ router.post('/supabase', async (req: Request, res: Response) => {
         username: user.username,
         email: user.email,
         role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        profileImage: user.profileImage,
         createdAt: user.createdAt
       }
     });
@@ -227,7 +233,7 @@ router.get('/me', async (req: Request, res: Response) => {
     const prisma = getPrisma(req);
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, username: true, email: true, role: true, createdAt: true }
+      select: { id: true, username: true, email: true, role: true, firstName: true, lastName: true, profileImage: true, createdAt: true }
     });
 
     if (!user) {
