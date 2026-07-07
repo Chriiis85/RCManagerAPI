@@ -9,10 +9,10 @@ const TRIP_INCLUDE = {
   park: true,
   companions: {
     include: {
-      user: { select: { id: true, username: true, email: true } }
+      user: { select: { id: true, username: true, email: true, profileImage: true } }
     }
   },
-  user: { select: { id: true, username: true } }
+  user: { select: { id: true, username: true, profileImage: true } }
 };
 
 // GET /api/trips — trips for auth user (owned + joined)
