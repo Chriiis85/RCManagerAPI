@@ -75,6 +75,49 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/trips/:id/companions — add companions to an existing trip
+router.post('/:id/companions', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId;
+    const tripId = parseInt(req.params['id'] as string);
+    const { companions } = req.body; // array of user IDs
+    const prisma = getPrisma(req);
+
+    if (!Array.isArray(companions) || companions.length === 0) {
+      res.status(400).json({ error: 'Se requiere una lista de usuarios.' });
+      return;
+    }
+
+    const trip = await prisma.trip.findUnique({ where: { id: tripId } });
+    if (!trip) { res.status(404).json({ error: 'Viaje no encontrado.' }); return; }
+    if (trip.userId !== userId) { res.status(403).json({ error: 'No tienes permiso.' }); return; }
+
+    const existing = await prisma.tripCompanion.findMany({ where: { tripId } });
+    const existingIds = existing.map(e => e.userId);
+    const newCompanions = companions.filter((id: number) => !existingIds.includes(id));
+
+    if (newCompanions.length > 0) {
+      await prisma.tripCompanion.createMany({
+        data: newCompanions.map((cId: number) => ({
+          tripId,
+          userId: cId,
+          status: 'ACCEPTED'
+        }))
+      });
+    }
+
+    const updatedTrip = await prisma.trip.findUnique({
+      where: { id: tripId },
+      include: TRIP_INCLUDE
+    });
+
+    res.json(updatedTrip);
+  } catch (error) {
+    console.error('Error adding companions:', error);
+    res.status(500).json({ error: 'Error adding companions', details: error instanceof Error ? error.message : error });
+  }
+});
+
 // DELETE /api/trips/:id — delete a trip
 router.delete('/:id', authenticateToken, async (req: Request, res: Response) => {
   try {
