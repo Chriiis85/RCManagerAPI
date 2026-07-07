@@ -61,7 +61,7 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
         endDate: endDate ? new Date(endDate) : null,
         companions: {
           create: companions
-            ? companions.map((cId: number) => ({ userId: cId, status: 'ACCEPTED' }))
+            ? companions.map((cId: number) => ({ userId: cId, status: 'PENDING' }))
             : []
         }
       },
@@ -101,7 +101,7 @@ router.post('/:id/companions', authenticateToken, async (req: Request, res: Resp
         data: newCompanions.map((cId: number) => ({
           tripId,
           userId: cId,
-          status: 'ACCEPTED'
+          status: 'PENDING'
         }))
       });
     }
@@ -115,6 +115,66 @@ router.post('/:id/companions', authenticateToken, async (req: Request, res: Resp
   } catch (error) {
     console.error('Error adding companions:', error);
     res.status(500).json({ error: 'Error adding companions', details: error instanceof Error ? error.message : error });
+  }
+});
+
+// PUT /api/trips/:id/companions/accept — accept a trip invitation
+router.put('/:id/companions/accept', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const currentUserId = (req as any).user.userId;
+    const tripId = parseInt(req.params['id'] as string);
+    const prisma = getPrisma(req);
+
+    const companion = await prisma.tripCompanion.findFirst({
+      where: { tripId, userId: currentUserId }
+    });
+
+    if (!companion) { res.status(404).json({ error: 'Invitación no encontrada.' }); return; }
+
+    await prisma.tripCompanion.update({
+      where: { id: companion.id },
+      data: { status: 'ACCEPTED' }
+    });
+
+    const updatedTrip = await prisma.trip.findUnique({
+      where: { id: tripId },
+      include: TRIP_INCLUDE
+    });
+
+    res.json(updatedTrip);
+  } catch (error) {
+    console.error('Error accepting invitation:', error);
+    res.status(500).json({ error: 'Error accepting invitation', details: error instanceof Error ? error.message : error });
+  }
+});
+
+// PUT /api/trips/:id/companions/reject — reject a trip invitation
+router.put('/:id/companions/reject', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const currentUserId = (req as any).user.userId;
+    const tripId = parseInt(req.params['id'] as string);
+    const prisma = getPrisma(req);
+
+    const companion = await prisma.tripCompanion.findFirst({
+      where: { tripId, userId: currentUserId }
+    });
+
+    if (!companion) { res.status(404).json({ error: 'Invitación no encontrada.' }); return; }
+
+    await prisma.tripCompanion.update({
+      where: { id: companion.id },
+      data: { status: 'REJECTED' }
+    });
+
+    const updatedTrip = await prisma.trip.findUnique({
+      where: { id: tripId },
+      include: TRIP_INCLUDE
+    });
+
+    res.json(updatedTrip);
+  } catch (error) {
+    console.error('Error rejecting invitation:', error);
+    res.status(500).json({ error: 'Error rejecting invitation', details: error instanceof Error ? error.message : error });
   }
 });
 

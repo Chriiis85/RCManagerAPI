@@ -11,16 +11,19 @@ const getPrisma = (req: Request): PrismaClient => (req.app.locals.prisma as Pris
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_change_in_production';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
-// ── POST /api/auth/register ──────────────────────────────────────────────────
+// 🔴 POST /api/auth/register 🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴
 router.post('/register', async (req: Request, res: Response) => {
   try {
-    const { username, email, password } = req.body;
+    let { username, email, password } = req.body;
 
     // Validaciones básicas
     if (!username || !email || !password) {
       res.status(400).json({ error: 'username, email y password son obligatorios.' });
       return;
     }
+    email = email.toLowerCase().trim();
+    username = username.trim();
+
     if (password.length < 8) {
       res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres.' });
       return;
@@ -75,12 +78,14 @@ router.post('/register', async (req: Request, res: Response) => {
 // ── POST /api/auth/login ─────────────────────────────────────────────────────
 router.post('/login', async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
 
     if (!email || !password) {
       res.status(400).json({ error: 'email y password son obligatorios.' });
       return;
     }
+    
+    email = email.toLowerCase().trim();
 
     const prisma = getPrisma(req);
 
