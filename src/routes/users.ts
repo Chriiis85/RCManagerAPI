@@ -37,9 +37,14 @@ router.get('/search', authenticateToken, async (req: Request, res: Response) => 
 // Update user profile
 router.put('/profile', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const currentUserId = (req as any).user.id;
+    const currentUserId = (req as any).user.userId;
     const { firstName, lastName, profileImage } = req.body;
     const prisma = getPrisma(req);
+
+    if (!currentUserId) {
+      res.status(401).json({ error: 'User ID missing from token' });
+      return;
+    }
 
     const updatedUser = await prisma.user.update({
       where: { id: currentUserId },
