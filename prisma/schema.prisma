@@ -24,8 +24,11 @@ model User {
   lastName          String?
   profileImage      String?
   twoFactorEnabled  Boolean            @default(false)
-  twoFactorSecret   String?
-  createdAt         DateTime           @default(now())
+  twoFactorType          String?            @default("APP")
+  twoFactorSecret        String?
+  twoFactorEmailCode     String?
+  twoFactorEmailExpires  DateTime?
+  createdAt              DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   coasterCredits    CoasterCredit[]
   attractionsRidden AttractionRecord[]

@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
+import { send2FAEmail } from '../utils/mailer';
 
 const router = Router();
 
@@ -12,6 +13,17 @@ const getPrisma = (req: Request): PrismaClient => (req.app.locals.prisma as Pris
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_change_in_production';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+
+function maskEmail(email: string): string {
+  const [name, domain] = email.split('@');
+  if (!domain) return email;
+  const visible = name.slice(0, Math.min(2, name.length));
+  return `${visible}***@${domain}`;
+}
+
+function generate6DigitCode(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
 // 🔴 POST /api/auth/register 🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴
 router.post('/register', async (req: Request, res: Response) => {
@@ -115,17 +127,44 @@ router.post('/login', async (req: Request, res: Response) => {
       return;
     }
 
-    // Si el usuario tiene 2FA activado, requerir código de 6 dígitos
-    if (user.twoFactorEnabled && user.twoFactorSecret) {
+    // Si el usuario tiene 2FA activado (EMAIL o APP)
+    if (user.twoFactorEnabled) {
       const tempToken = jwt.sign(
         { userId: user.id, is2FA: true },
         JWT_SECRET,
-        { expiresIn: '5m' }
+        { expiresIn: '10m' }
       );
+
+      if (user.twoFactorType === 'EMAIL') {
+        const emailCode = generate6DigitCode();
+        const expires = new Date(Date.now() + 10 * 60 * 1000);
+
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            twoFactorEmailCode: emailCode,
+            twoFactorEmailExpires: expires
+          }
+        });
+
+        await send2FAEmail(user.email, emailCode, user.username);
+
+        res.json({
+          requires2FA: true,
+          twoFactorType: 'EMAIL',
+          tempToken,
+          maskedEmail: maskEmail(user.email),
+          message: 'Se ha enviado un código de verificación a tu correo electrónico.'
+        });
+        return;
+      }
+
+      // 2FA por App Authenticator (TOTP)
       res.json({
         requires2FA: true,
+        twoFactorType: 'APP',
         tempToken,
-        message: 'Verificación en dos pasos requerida.'
+        message: 'Verificación en dos pasos requerida (App Authenticator).'
       });
       return;
     }
@@ -149,6 +188,7 @@ router.post('/login', async (req: Request, res: Response) => {
         lastName: user.lastName,
         profileImage: user.profileImage,
         twoFactorEnabled: user.twoFactorEnabled,
+        twoFactorType: user.twoFactorType,
         createdAt: user.createdAt
       }
     });
@@ -185,17 +225,38 @@ router.post('/login/2fa', async (req: Request, res: Response) => {
 
     const prisma = getPrisma(req);
     const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
-    if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
+    if (!user || !user.twoFactorEnabled) {
       res.status(400).json({ error: 'El usuario no tiene 2FA configurado.' });
       return;
     }
 
-    const isValid = speakeasy.totp.verify({
-      secret: user.twoFactorSecret,
-      encoding: 'base32',
-      token: String(code).trim(),
-      window: 2
-    });
+    let isValid = false;
+
+    if (user.twoFactorType === 'EMAIL') {
+      if (
+        user.twoFactorEmailCode &&
+        user.twoFactorEmailCode === String(code).trim() &&
+        user.twoFactorEmailExpires &&
+        new Date() <= user.twoFactorEmailExpires
+      ) {
+        isValid = true;
+        // Limpiar código usado
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { twoFactorEmailCode: null, twoFactorEmailExpires: null }
+        });
+      }
+    } else {
+      // Método APP (TOTP)
+      if (user.twoFactorSecret) {
+        isValid = speakeasy.totp.verify({
+          secret: user.twoFactorSecret,
+          encoding: 'base32',
+          token: String(code).trim(),
+          window: 2
+        });
+      }
+    }
 
     if (!isValid) {
       res.status(401).json({ error: 'Código de verificación incorrecto o expirado.' });
@@ -220,12 +281,57 @@ router.post('/login/2fa', async (req: Request, res: Response) => {
         lastName: user.lastName,
         profileImage: user.profileImage,
         twoFactorEnabled: user.twoFactorEnabled,
+        twoFactorType: user.twoFactorType,
         createdAt: user.createdAt
       }
     });
   } catch (error) {
     console.error('Error en /login/2fa:', error);
     res.status(500).json({ error: 'Error interno en verificación 2FA.' });
+  }
+});
+
+// ── POST /api/auth/login/2fa/resend ─────────────────────────────────────────
+router.post('/login/2fa/resend', async (req: Request, res: Response) => {
+  try {
+    const { tempToken } = req.body;
+    if (!tempToken) {
+      res.status(400).json({ error: 'tempToken es obligatorio.' });
+      return;
+    }
+
+    let decoded: { userId: number; is2FA: boolean };
+    try {
+      decoded = jwt.verify(tempToken, JWT_SECRET) as { userId: number; is2FA: boolean };
+    } catch {
+      res.status(401).json({ error: 'La sesión ha expirado. Inicia sesión de nuevo.' });
+      return;
+    }
+
+    const prisma = getPrisma(req);
+    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+    if (!user || !user.twoFactorEnabled || user.twoFactorType !== 'EMAIL') {
+      res.status(400).json({ error: 'El usuario no tiene 2FA por email.' });
+      return;
+    }
+
+    const emailCode = generate6DigitCode();
+    const expires = new Date(Date.now() + 10 * 60 * 1000);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        twoFactorEmailCode: emailCode,
+        twoFactorEmailExpires: expires
+      }
+    });
+
+    await send2FAEmail(user.email, emailCode, user.username);
+
+    res.json({ message: 'Se ha reenviado un nuevo código a tu correo electrónico.' });
+  } catch (error) {
+    console.error('Error en /login/2fa/resend:', error);
+    res.status(500).json({ error: 'Error al reenviar código.' });
   }
 });
 
@@ -297,6 +403,7 @@ router.post('/supabase', async (req: Request, res: Response) => {
         lastName: user.lastName,
         profileImage: user.profileImage,
         twoFactorEnabled: user.twoFactorEnabled,
+        twoFactorType: user.twoFactorType,
         createdAt: user.createdAt
       }
     });
@@ -338,7 +445,8 @@ router.get('/me', async (req: Request, res: Response) => {
         firstName: true, 
         lastName: true, 
         profileImage: true, 
-        twoFactorEnabled: true, 
+        twoFactorEnabled: true,
+        twoFactorType: true,
         createdAt: true 
       }
     });
@@ -357,7 +465,55 @@ router.get('/me', async (req: Request, res: Response) => {
 
 // ── 2FA MANAGEMENT ENDPOINTS ─────────────────────────────────────────────────
 
-// POST /api/auth/2fa/setup (Genera Secret y Código QR)
+// POST /api/auth/2fa/send-email-code (Envía código de prueba por correo para activar 2FA)
+router.post('/2fa/send-email-code', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      res.status(401).json({ error: 'Token de autenticación requerido.' });
+      return;
+    }
+    const token = authHeader.split(' ')[1];
+    let decoded: { userId: number };
+    try {
+      decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
+    } catch {
+      res.status(401).json({ error: 'Token inválido o expirado.' });
+      return;
+    }
+
+    const prisma = getPrisma(req);
+    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+    if (!user) {
+      res.status(404).json({ error: 'Usuario no encontrado.' });
+      return;
+    }
+
+    const code = generate6DigitCode();
+    const expires = new Date(Date.now() + 10 * 60 * 1000);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        twoFactorEmailCode: code,
+        twoFactorEmailExpires: expires
+      }
+    });
+
+    await send2FAEmail(user.email, code, user.username);
+
+    res.json({ 
+      message: `Código de verificación enviado a ${user.email}`,
+      email: user.email,
+      maskedEmail: maskEmail(user.email)
+    });
+  } catch (error) {
+    console.error('Error en /2fa/send-email-code:', error);
+    res.status(500).json({ error: 'Error al enviar código al correo.' });
+  }
+});
+
+// POST /api/auth/2fa/setup (Genera Secret y Código QR para App)
 router.post('/2fa/setup', async (req: Request, res: Response) => {
   try {
     const authHeader = req.headers.authorization;
@@ -403,7 +559,7 @@ router.post('/2fa/setup', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/auth/2fa/enable (Verifica el código de prueba y activa 2FA)
+// POST /api/auth/2fa/enable (Verifica código y activa 2FA con tipo EMAIL o APP)
 router.post('/2fa/enable', async (req: Request, res: Response) => {
   try {
     const authHeader = req.headers.authorization;
@@ -420,32 +576,67 @@ router.post('/2fa/enable', async (req: Request, res: Response) => {
       return;
     }
 
-    const { secret, code } = req.body;
-    if (!secret || !code) {
-      res.status(400).json({ error: 'secret y code son obligatorios.' });
-      return;
-    }
-
-    const isValid = speakeasy.totp.verify({
-      secret: String(secret).trim(),
-      encoding: 'base32',
-      token: String(code).trim(),
-      window: 2
-    });
-
-    if (!isValid) {
-      res.status(400).json({ error: 'Código de verificación incorrecto. Asegúrate de que la hora en tu dispositivo esté sincronizada.' });
+    const { type, secret, code } = req.body;
+    if (!code) {
+      res.status(400).json({ error: 'El código de verificación es obligatorio.' });
       return;
     }
 
     const prisma = getPrisma(req);
-    await prisma.user.update({
-      where: { id: decoded.userId },
-      data: {
-        twoFactorEnabled: true,
-        twoFactorSecret: String(secret).trim()
+    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+    if (!user) {
+      res.status(404).json({ error: 'Usuario no encontrado.' });
+      return;
+    }
+
+    if (type === 'EMAIL') {
+      if (
+        !user.twoFactorEmailCode ||
+        user.twoFactorEmailCode !== String(code).trim() ||
+        !user.twoFactorEmailExpires ||
+        new Date() > user.twoFactorEmailExpires
+      ) {
+        res.status(400).json({ error: 'Código de verificación de email incorrecto o expirado.' });
+        return;
       }
-    });
+
+      await prisma.user.update({
+        where: { id: decoded.userId },
+        data: {
+          twoFactorEnabled: true,
+          twoFactorType: 'EMAIL',
+          twoFactorEmailCode: null,
+          twoFactorEmailExpires: null
+        }
+      });
+    } else {
+      // Método APP (TOTP)
+      if (!secret) {
+        res.status(400).json({ error: 'El secreto 2FA es obligatorio para la app.' });
+        return;
+      }
+
+      const isValid = speakeasy.totp.verify({
+        secret: String(secret).trim(),
+        encoding: 'base32',
+        token: String(code).trim(),
+        window: 2
+      });
+
+      if (!isValid) {
+        res.status(400).json({ error: 'Código incorrecto. Asegúrate de que la hora en tu dispositivo esté sincronizada.' });
+        return;
+      }
+
+      await prisma.user.update({
+        where: { id: decoded.userId },
+        data: {
+          twoFactorEnabled: true,
+          twoFactorType: 'APP',
+          twoFactorSecret: String(secret).trim()
+        }
+      });
+    }
 
     res.json({ message: 'Verificación en dos pasos activada correctamente.' });
   } catch (error) {
@@ -471,33 +662,15 @@ router.post('/2fa/disable', async (req: Request, res: Response) => {
       return;
     }
 
-    const { code } = req.body;
     const prisma = getPrisma(req);
-    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
-
-    if (!user) {
-      res.status(404).json({ error: 'Usuario no encontrado.' });
-      return;
-    }
-
-    if (code && user.twoFactorSecret) {
-      const isValid = speakeasy.totp.verify({
-        secret: user.twoFactorSecret,
-        encoding: 'base32',
-        token: String(code).trim(),
-        window: 2
-      });
-      if (!isValid) {
-        res.status(400).json({ error: 'Código de verificación incorrecto.' });
-        return;
-      }
-    }
-
     await prisma.user.update({
       where: { id: decoded.userId },
       data: {
         twoFactorEnabled: false,
-        twoFactorSecret: null
+        twoFactorType: 'APP',
+        twoFactorSecret: null,
+        twoFactorEmailCode: null,
+        twoFactorEmailExpires: null
       }
     });
 
