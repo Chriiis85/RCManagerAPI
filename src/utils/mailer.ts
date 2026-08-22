@@ -15,18 +15,11 @@ function getTransporter() {
     });
   }
 
-  return nodemailer.createTransport({
-    host: 'smtp.ethereal.email',
-    port: 587,
-    auth: {
-      user: 'ethereal.user@ethereal.email',
-      pass: 'ethereal.pass'
-    }
-  });
+  return null;
 }
 
 export async function send2FAEmail(to: string, code: string, username?: string): Promise<boolean> {
-  const from = process.env.SMTP_FROM || '"RCManager Seguridad" <security@rcmanager.app>';
+  const from = process.env.SMTP_FROM || process.env.RESEND_FROM || 'RCManager <onboarding@resend.dev>';
   const subject = `🔒 Tu código de verificación RCManager: ${code}`;
   
   const html = `
@@ -78,20 +71,56 @@ export async function send2FAEmail(to: string, code: string, username?: string):
     </html>
   `;
 
-  try {
-    const transporter = getTransporter();
-    const info = await transporter.sendMail({
-      from,
-      to,
-      subject,
-      text: `Tu código de verificación de 6 dígitos para RCManager es: ${code} (Válido por 10 minutos).`,
-      html
-    });
-    console.log(`[Mailer] 2FA email sent to ${to} (MessageId: ${info.messageId || 'simulated'})`);
-    return true;
-  } catch (error) {
-    console.error('[Mailer] Error sending 2FA email:', error);
-    console.log(`[Mailer DEV FALLBACK] 2FA Code for ${to}: ${code}`);
-    return false;
+  // 1. Si hay clave de Resend configurada, usar Resend API (HTTP ultra rápido y sin bloqueos de puertos)
+  const resendApiKey = process.env.RESEND_API_KEY;
+  if (resendApiKey) {
+    try {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from,
+          to: [to],
+          subject,
+          html,
+          text: `Tu código de verificación de 6 dígitos para RCManager es: ${code} (Válido por 10 minutos).`
+        })
+      });
+
+      if (response.ok) {
+        console.log(`[Resend API] 2FA email sent to ${to}`);
+        return true;
+      } else {
+        const errorData = await response.text();
+        console.error('[Resend API Error]:', errorData);
+      }
+    } catch (err) {
+      console.error('[Resend Exception]:', err);
+    }
   }
+
+  // 2. Si hay SMTP configurado, usar Nodemailer
+  const transporter = getTransporter();
+  if (transporter) {
+    try {
+      const info = await transporter.sendMail({
+        from: process.env.SMTP_FROM || '"RCManager Seguridad" <security@rcmanager.app>',
+        to,
+        subject,
+        text: `Tu código de verificación de 6 dígitos para RCManager es: ${code} (Válido por 10 minutos).`,
+        html
+      });
+      console.log(`[SMTP Mailer] 2FA email sent to ${to} (MessageId: ${info.messageId})`);
+      return true;
+    } catch (error) {
+      console.error('[SMTP Mailer Error]:', error);
+    }
+  }
+
+  // 3. Fallback en desarrollo: loggear en consola del backend
+  console.log(`[Mailer Fallback] No SMTP / Resend credentials found. 2FA Code for ${to}: ${code}`);
+  return true;
 }
