@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth';
 
@@ -101,6 +102,57 @@ router.put('/profile', authenticateToken, async (req: Request, res: Response) =>
   } catch (error) {
     console.error('Error updating profile:', error);
     res.status(500).json({ error: 'Error updating profile', details: error instanceof Error ? error.message : error });
+  }
+});
+
+// Update or set user password
+router.put('/password', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const currentUserId = (req as any).user?.userId || (req as any).user?.id;
+    const { currentPassword, newPassword } = req.body;
+    const prisma = getPrisma(req);
+
+    if (!currentUserId) {
+      res.status(401).json({ error: 'Usuario no autenticado o token inválido.' });
+      return;
+    }
+
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
+      res.status(400).json({ error: 'La nueva contraseña debe tener al menos 8 caracteres.' });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: currentUserId } });
+    if (!user) {
+      res.status(404).json({ error: 'Usuario no encontrado.' });
+      return;
+    }
+
+    // Si el cliente envía la contraseña actual, verificarla
+    if (currentPassword) {
+      const passwordMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!passwordMatch) {
+        res.status(400).json({ error: 'La contraseña actual no es correcta.' });
+        return;
+      }
+    }
+
+    // Hashear y guardar la nueva contraseña
+    const saltRounds = 12;
+    const passwordHash = await bcrypt.hash(newPassword, saltRounds);
+
+    await prisma.user.update({
+      where: { id: currentUserId },
+      data: { passwordHash }
+    });
+
+    res.json({ message: 'Contraseña actualizada correctamente.' });
+  } catch (error) {
+    console.error('Error al actualizar contraseña:', error);
+    res.status(500).json({
+      error: 'Error interno al actualizar la contraseña.',
+      details: error instanceof Error ? error.message : error
+    });
   }
 });
 

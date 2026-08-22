@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
+import { generateSecret, generateURI, verifySync } from 'otplib';
+import QRCode from 'qrcode';
 
 const router = Router();
 
@@ -37,7 +39,7 @@ router.post('/register', async (req: Request, res: Response) => {
     });
     if (existing) {
       if (existing.email === email) {
-        res.status(409).json({ error: 'El email ya está registrado. Si usaste Google o Apple, inicia sesión con ese botón.' });
+        res.status(409).json({ error: 'El email ya está registrado. Si usaste Google, inicia sesión con ese botón.' });
         return;
       }
       res.status(409).json({ error: 'El nombre de usuario ya está en uso.' });
@@ -89,17 +91,42 @@ router.post('/login', async (req: Request, res: Response) => {
 
     const prisma = getPrisma(req);
 
-    // Buscar usuario
-    const user = await prisma.user.findUnique({ where: { email } });
+    // Buscar usuario (insensible a mayúsculas/minúsculas)
+    const user = await prisma.user.findFirst({
+      where: {
+        email: { equals: email, mode: 'insensitive' }
+      }
+    });
     if (!user) {
-      res.status(401).json({ error: 'Credenciales incorrectas o usuario no encontrado.' });
+      res.status(401).json({ 
+        error: 'No se ha encontrado ninguna cuenta con este correo. Regístrate primero con Google.',
+        isNotRegistered: true
+      });
       return;
     }
 
     // Verificar contraseña
     const passwordMatch = await bcrypt.compare(password, user.passwordHash);
     if (!passwordMatch) {
-      res.status(401).json({ error: 'Credenciales incorrectas. Si creaste tu cuenta con Google o Apple, usa ese botón para entrar.' });
+      res.status(401).json({ 
+        error: 'Contraseña incorrecta o cuenta sin contraseña manual. Si te registraste con Google, inicia sesión con el botón de Google y luego podrás establecer tu contraseña en tu Perfil.',
+        isOAuthHint: true
+      });
+      return;
+    }
+
+    // Si el usuario tiene 2FA activado, requerir código de 6 dígitos
+    if (user.twoFactorEnabled && user.twoFactorSecret) {
+      const tempToken = jwt.sign(
+        { userId: user.id, is2FA: true },
+        JWT_SECRET,
+        { expiresIn: '5m' }
+      );
+      res.json({
+        requires2FA: true,
+        tempToken,
+        message: 'Verificación en dos pasos requerida.'
+      });
       return;
     }
 
@@ -121,6 +148,7 @@ router.post('/login', async (req: Request, res: Response) => {
         firstName: user.firstName,
         lastName: user.lastName,
         profileImage: user.profileImage,
+        twoFactorEnabled: user.twoFactorEnabled,
         createdAt: user.createdAt
       }
     });
@@ -130,6 +158,72 @@ router.post('/login', async (req: Request, res: Response) => {
       error: 'Error interno al iniciar sesión.',
       details: error instanceof Error ? error.message : error
     });
+  }
+});
+
+// ── POST /api/auth/login/2fa ────────────────────────────────────────────────
+router.post('/login/2fa', async (req: Request, res: Response) => {
+  try {
+    const { tempToken, code } = req.body;
+    if (!tempToken || !code) {
+      res.status(400).json({ error: 'tempToken y el código 2FA son obligatorios.' });
+      return;
+    }
+
+    let decoded: { userId: number; is2FA: boolean };
+    try {
+      decoded = jwt.verify(tempToken, JWT_SECRET) as { userId: number; is2FA: boolean };
+    } catch {
+      res.status(401).json({ error: 'La sesión de verificación ha expirado. Inicia sesión de nuevo.' });
+      return;
+    }
+
+    if (!decoded.is2FA) {
+      res.status(400).json({ error: 'Token inválido para 2FA.' });
+      return;
+    }
+
+    const prisma = getPrisma(req);
+    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+    if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
+      res.status(400).json({ error: 'El usuario no tiene 2FA configurado.' });
+      return;
+    }
+
+    const verifyResult = verifySync({
+      token: String(code).trim(),
+      secret: user.twoFactorSecret
+    });
+
+    if (!verifyResult.valid) {
+      res.status(401).json({ error: 'Código de verificación incorrecto o expirado.' });
+      return;
+    }
+
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions
+    );
+
+    res.json({
+      message: 'Sesión iniciada correctamente con 2FA.',
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        profileImage: user.profileImage,
+        twoFactorEnabled: user.twoFactorEnabled,
+        createdAt: user.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Error en /login/2fa:', error);
+    res.status(500).json({ error: 'Error interno en verificación 2FA.' });
   }
 });
 
@@ -200,6 +294,7 @@ router.post('/supabase', async (req: Request, res: Response) => {
         firstName: user.firstName,
         lastName: user.lastName,
         profileImage: user.profileImage,
+        twoFactorEnabled: user.twoFactorEnabled,
         createdAt: user.createdAt
       }
     });
@@ -233,7 +328,17 @@ router.get('/me', async (req: Request, res: Response) => {
     const prisma = getPrisma(req);
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, username: true, email: true, role: true, firstName: true, lastName: true, profileImage: true, createdAt: true }
+      select: { 
+        id: true, 
+        username: true, 
+        email: true, 
+        role: true, 
+        firstName: true, 
+        lastName: true, 
+        profileImage: true, 
+        twoFactorEnabled: true, 
+        createdAt: true 
+      }
     });
 
     if (!user) {
@@ -245,6 +350,149 @@ router.get('/me', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error en /me:', error);
     res.status(500).json({ error: 'Error interno.' });
+  }
+});
+
+// ── 2FA MANAGEMENT ENDPOINTS ─────────────────────────────────────────────────
+
+// POST /api/auth/2fa/setup (Genera Secret y Código QR)
+router.post('/2fa/setup', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      res.status(401).json({ error: 'Token de autenticación requerido.' });
+      return;
+    }
+    const token = authHeader.split(' ')[1];
+    let decoded: { userId: number; email: string };
+    try {
+      decoded = jwt.verify(token, JWT_SECRET) as { userId: number; email: string };
+    } catch {
+      res.status(401).json({ error: 'Token inválido o expirado.' });
+      return;
+    }
+
+    const prisma = getPrisma(req);
+    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+    if (!user) {
+      res.status(404).json({ error: 'Usuario no encontrado.' });
+      return;
+    }
+
+    // Generar secret y URL TOTP
+    const secret = generateSecret();
+    const otpauthUrl = generateURI({ secret, issuer: 'RCManager', label: user.email });
+    const qrCode = await QRCode.toDataURL(otpauthUrl);
+
+    res.json({
+      secret,
+      qrCode,
+      otpauthUrl
+    });
+  } catch (error) {
+    console.error('Error en /2fa/setup:', error);
+    res.status(500).json({ error: 'Error al generar configuración 2FA.' });
+  }
+});
+
+// POST /api/auth/2fa/enable (Verifica el código de prueba y activa 2FA)
+router.post('/2fa/enable', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      res.status(401).json({ error: 'Token de autenticación requerido.' });
+      return;
+    }
+    const token = authHeader.split(' ')[1];
+    let decoded: { userId: number };
+    try {
+      decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
+    } catch {
+      res.status(401).json({ error: 'Token inválido o expirado.' });
+      return;
+    }
+
+    const { secret, code } = req.body;
+    if (!secret || !code) {
+      res.status(400).json({ error: 'secret y code son obligatorios.' });
+      return;
+    }
+
+    const verifyResult = verifySync({
+      token: String(code).trim(),
+      secret: String(secret).trim()
+    });
+
+    if (!verifyResult.valid) {
+      res.status(400).json({ error: 'Código de verificación incorrecto. Asegúrate de que la hora en tu dispositivo esté sincronizada.' });
+      return;
+    }
+
+    const prisma = getPrisma(req);
+    await prisma.user.update({
+      where: { id: decoded.userId },
+      data: {
+        twoFactorEnabled: true,
+        twoFactorSecret: String(secret).trim()
+      }
+    });
+
+    res.json({ message: 'Verificación en dos pasos activada correctamente.' });
+  } catch (error) {
+    console.error('Error en /2fa/enable:', error);
+    res.status(500).json({ error: 'Error al activar 2FA.' });
+  }
+});
+
+// POST /api/auth/2fa/disable (Desactiva 2FA)
+router.post('/2fa/disable', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      res.status(401).json({ error: 'Token de autenticación requerido.' });
+      return;
+    }
+    const token = authHeader.split(' ')[1];
+    let decoded: { userId: number };
+    try {
+      decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
+    } catch {
+      res.status(401).json({ error: 'Token inválido o expirado.' });
+      return;
+    }
+
+    const { code } = req.body;
+    const prisma = getPrisma(req);
+    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+
+    if (!user) {
+      res.status(404).json({ error: 'Usuario no encontrado.' });
+      return;
+    }
+
+    if (code && user.twoFactorSecret) {
+      const verifyResult = verifySync({
+        token: String(code).trim(),
+        secret: user.twoFactorSecret
+      });
+      if (!verifyResult.valid) {
+        res.status(400).json({ error: 'Código de verificación incorrecto.' });
+        return;
+      }
+    }
+
+    await prisma.user.update({
+      where: { id: decoded.userId },
+      data: {
+        twoFactorEnabled: false,
+        twoFactorSecret: null
+      }
+    });
+
+    res.json({ message: 'Verificación en dos pasos desactivada correctamente.' });
+  } catch (error) {
+    console.error('Error en /2fa/disable:', error);
+    res.status(500).json({ error: 'Error al desactivar 2FA.' });
   }
 });
 
