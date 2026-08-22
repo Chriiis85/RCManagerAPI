@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
-import { generateSecret, generateURI, verifySync } from 'otplib';
+import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
 
 const router = Router();
@@ -190,12 +190,14 @@ router.post('/login/2fa', async (req: Request, res: Response) => {
       return;
     }
 
-    const verifyResult = verifySync({
+    const isValid = speakeasy.totp.verify({
+      secret: user.twoFactorSecret,
+      encoding: 'base32',
       token: String(code).trim(),
-      secret: user.twoFactorSecret
+      window: 2
     });
 
-    if (!verifyResult.valid) {
+    if (!isValid) {
       res.status(401).json({ error: 'Código de verificación incorrecto o expirado.' });
       return;
     }
@@ -380,8 +382,14 @@ router.post('/2fa/setup', async (req: Request, res: Response) => {
     }
 
     // Generar secret y URL TOTP
-    const secret = generateSecret();
-    const otpauthUrl = generateURI({ secret, issuer: 'RCManager', label: user.email });
+    const secretObj = speakeasy.generateSecret({
+      length: 20,
+      name: `RCManager (${user.email})`,
+      issuer: 'RCManager'
+    });
+
+    const secret = secretObj.base32;
+    const otpauthUrl = secretObj.otpauth_url || '';
     const qrCode = await QRCode.toDataURL(otpauthUrl);
 
     res.json({
@@ -418,12 +426,14 @@ router.post('/2fa/enable', async (req: Request, res: Response) => {
       return;
     }
 
-    const verifyResult = verifySync({
+    const isValid = speakeasy.totp.verify({
+      secret: String(secret).trim(),
+      encoding: 'base32',
       token: String(code).trim(),
-      secret: String(secret).trim()
+      window: 2
     });
 
-    if (!verifyResult.valid) {
+    if (!isValid) {
       res.status(400).json({ error: 'Código de verificación incorrecto. Asegúrate de que la hora en tu dispositivo esté sincronizada.' });
       return;
     }
@@ -471,11 +481,13 @@ router.post('/2fa/disable', async (req: Request, res: Response) => {
     }
 
     if (code && user.twoFactorSecret) {
-      const verifyResult = verifySync({
+      const isValid = speakeasy.totp.verify({
+        secret: user.twoFactorSecret,
+        encoding: 'base32',
         token: String(code).trim(),
-        secret: user.twoFactorSecret
+        window: 2
       });
-      if (!verifyResult.valid) {
+      if (!isValid) {
         res.status(400).json({ error: 'Código de verificación incorrecto.' });
         return;
       }
