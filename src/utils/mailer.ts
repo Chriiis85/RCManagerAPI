@@ -1,10 +1,17 @@
 import nodemailer from 'nodemailer';
 
 function getTransporter() {
-  const host = process.env.SMTP_HOST;
-  const port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  const user = process.env.SMTP_USER || 'rcmanager.support@gmail.com';
+  const pass = process.env.SMTP_PASS || 'fwulgzwwnsmwpruf';
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 465;
+
+  if (user.includes('@gmail.com') || host === 'smtp.gmail.com') {
+    return nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user, pass }
+    });
+  }
 
   if (host && user && pass) {
     return nodemailer.createTransport({
@@ -19,7 +26,7 @@ function getTransporter() {
 }
 
 export async function send2FAEmail(to: string, code: string, username?: string): Promise<boolean> {
-  const from = process.env.SMTP_FROM || process.env.RESEND_FROM || 'RCManager <onboarding@resend.dev>';
+  const from = process.env.SMTP_FROM || '"RCManager Soporte" <rcmanager.support@gmail.com>';
   const subject = `🔒 Tu código de verificación RCManager: ${code}`;
   
   const html = `
