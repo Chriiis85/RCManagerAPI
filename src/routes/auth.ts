@@ -92,26 +92,29 @@ router.post('/register', async (req: Request, res: Response) => {
 // ── POST /api/auth/login ─────────────────────────────────────────────────────
 router.post('/login', async (req: Request, res: Response) => {
   try {
-    let { email, password } = req.body;
+    let { email, username, identifier, password } = req.body;
 
-    if (!email || !password) {
-      res.status(400).json({ error: 'email y password son obligatorios.' });
+    const rawIdentifier = String(identifier || email || username || '').trim();
+
+    if (!rawIdentifier || !password) {
+      res.status(400).json({ error: 'El correo electrónico o usuario y la contraseña son obligatorios.' });
       return;
     }
-    
-    email = email.toLowerCase().trim();
 
     const prisma = getPrisma(req);
 
-    // Buscar usuario (insensible a mayúsculas/minúsculas)
+    // Buscar usuario (insensible a mayúsculas/minúsculas) por email O por username
     const user = await prisma.user.findFirst({
       where: {
-        email: { equals: email, mode: 'insensitive' }
+        OR: [
+          { email: { equals: rawIdentifier, mode: 'insensitive' } },
+          { username: { equals: rawIdentifier, mode: 'insensitive' } }
+        ]
       }
     });
     if (!user) {
       res.status(401).json({ 
-        error: 'No se ha encontrado ninguna cuenta con este correo. Regístrate primero con Google.',
+        error: 'No se ha encontrado ninguna cuenta con este correo o nombre de usuario. Regístrate primero con Google.',
         isNotRegistered: true
       });
       return;
