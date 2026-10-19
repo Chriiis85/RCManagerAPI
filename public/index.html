@@ -1,25 +1,30 @@
 <!DOCTYPE html>
-<html lang="es" class="dark">
+<html lang="es" class="h-full">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RCManager • Theme Park API</title>
-  
-  <!-- Font: Inter (exacta de RCManager) -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
-  <!-- Immediate Dark Mode Default Script (Default is dark mode) -->
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RCManager • API Documentation</title>
+  <meta name="description" content="Documentación y referencia interactiva oficial de la API REST de RCManager." />
+
+  <!-- Anti-flicker dark/light init script -->
   <script>
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
-      document.documentElement.classList.remove('dark');
-    } else {
+    try {
+      const t = localStorage.getItem('theme');
+      if (t === 'light') {
+        document.documentElement.classList.remove('dark');
+      } else {
+        document.documentElement.classList.add('dark');
+      }
+    } catch (_) {
       document.documentElement.classList.add('dark');
     }
   </script>
-  
+
+  <!-- Google Font: Inter (UI única y consistente) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -28,26 +33,14 @@
       theme: {
         extend: {
           fontFamily: {
-            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-            mono: ['JetBrains Mono', 'ui-monospace', 'monospace']
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+            mono: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif']
           },
-          animation: {
-            'fade-in-up': 'fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-            'fade-in': 'fadeIn 0.3s ease-out forwards',
-            'scale-up': 'scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards'
-          },
-          keyframes: {
-            fadeInUp: {
-              '0%': { opacity: '0', transform: 'translateY(18px)' },
-              '100%': { opacity: '1', transform: 'translateY(0)' }
-            },
-            fadeIn: {
-              '0%': { opacity: '0' },
-              '100%': { opacity: '1' }
-            },
-            scaleUp: {
-              '0%': { opacity: '0', transform: 'scale(0.95)' },
-              '100%': { opacity: '1', transform: 'scale(1)' }
+          colors: {
+            zinc: {
+              850: '#1f2023',
+              900: '#18181b',
+              950: '#09090b'
             }
           }
         }
@@ -56,591 +49,918 @@
   </script>
 
   <style>
-    /* Scrollbar idéntica a RCManager */
-    ::-webkit-scrollbar { width: 7px; height: 7px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
-    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    /* Smooth anchor scrolling with topbar offset */
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: 5rem;
+    }
 
-    /* Custom JSON coloring */
-    .json-key { color: #60a5fa; font-weight: 600; }
-    .json-str { color: #4ade80; }
-    .json-num { color: #facc15; }
-    .json-bool { color: #f472b6; font-weight: 600; }
-    .json-null { color: #94a3b8; font-style: italic; }
+    /* Global consistent typography */
+    body, code, pre, kbd, samp {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    }
+
+    /* Subtle scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.3); border-radius: 9999px; }
+    .dark ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(156, 163, 175, 0.5); }
+
+    /* Shiki syntax highlighting */
+    .shiki-key { color: #93c5fd; }
+    .shiki-str { color: #6ee7b7; }
+    .shiki-num { color: #fde047; }
+    .shiki-bool { color: #f472b6; font-weight: 600; }
+    .shiki-null { color: #94a3b8; font-style: italic; }
+
+    @media (min-width: 1280px) {
+      .protocol-sticky {
+        position: sticky;
+        top: 5rem;
+      }
+    }
   </style>
 </head>
-<body class="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900 font-sans text-slate-800 dark:text-slate-100 selection:bg-blue-100 selection:text-blue-900 dark:selection:bg-blue-900/40 dark:selection:text-blue-200 antialiased transition-colors duration-200">
+<body class="flex min-h-full bg-white antialiased dark:bg-zinc-900 text-zinc-900 dark:text-white font-sans selection:bg-emerald-500/20 selection:text-emerald-500">
 
   <!-- ========================================================================= -->
-  <!-- NAVBAR: EXACTA A LA DE RCMANAGER (Altura, blur, logo SVG interactivo)    -->
+  <!-- PROTOCOL FIXED LEFT SIDEBAR                                               -->
   <!-- ========================================================================= -->
-  <nav class="fixed top-0 z-[1000] w-full border-b border-slate-100 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-xs transition-all duration-300 h-16 sm:h-20">
-    <div class="mx-auto flex max-w-7xl 2xl:max-w-8xl h-full items-center justify-between px-4 sm:px-6 lg:px-8">
-      
-      <!-- LOGO BRAND (Idéntico a RCManager Angular) -->
-      <div class="flex items-center flex-shrink-0">
-        <a href="/" class="text-xl sm:text-2xl font-black tracking-tighter text-blue-900 dark:text-white transition-colors hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-2 group cursor-pointer">
-          <!-- Roller Coaster Animated Logo de RCManager -->
-          <svg 
-            class="h-6 w-6 sm:h-7 sm:w-7 text-blue-600 dark:text-blue-400 transition-transform duration-500 ease-in-out group-hover:scale-110 group-hover:-rotate-3 shrink-0" 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
-            stroke-width="2" 
-            stroke-linecap="round" 
-            stroke-linejoin="round"
-          >
-            <path d="M2.5 17s3-11 6.5-11 5 11 8.5 11 4.5-8 4.5-8" />
-            <path d="M2.5 21s3-11 6.5-11 5 11 8.5 11 4.5-8 4.5-8" opacity="0.3" stroke-width="2" />
-            <rect x="7" y="4.5" width="3" height="2" rx="0.5" fill="currentColor" stroke="none" class="animate-bounce" style="animation-duration: 2s;" />
-          </svg>
-          <span class="flex items-baseline">
-            RC<span class="text-blue-600 dark:text-blue-400">Manager</span>
-            <span class="ml-2 text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 ring-1 ring-inset ring-blue-500/20">API</span>
-          </span>
-        </a>
-      </div>
-
-      <!-- DESKTOP CENTER NAVIGATION: CATEGORÍAS DE LA API -->
-      <div class="hidden lg:flex items-center gap-1 xl:gap-2">
-        <button 
-          onclick="selectCategory('coasters')" 
-          id="nav-coasters"
-          class="nav-tab px-3 py-2 rounded-xl text-xs xl:text-sm font-semibold transition-all duration-200 cursor-pointer bg-blue-50 text-blue-600 dark:bg-blue-950/80 dark:text-blue-400 font-bold"
-        >
-          🎢 Montañas Rusas
-        </button>
-
-        <button 
-          onclick="selectCategory('parks')" 
-          id="nav-parks"
-          class="nav-tab px-3 py-2 rounded-xl text-xs xl:text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-all duration-200 cursor-pointer"
-        >
-          🏰 Parques Temáticos
-        </button>
-
-        <button 
-          onclick="selectCategory('attractions')" 
-          id="nav-attractions"
-          class="nav-tab px-3 py-2 rounded-xl text-xs xl:text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-all duration-200 cursor-pointer"
-        >
-          🎡 Atracciones
-        </button>
-
-        <button 
-          onclick="selectCategory('shows')" 
-          id="nav-shows"
-          class="nav-tab px-3 py-2 rounded-xl text-xs xl:text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-all duration-200 cursor-pointer"
-        >
-          🎭 Shows
-        </button>
-
-        <button 
-          onclick="selectCategory('restaurants')" 
-          id="nav-restaurants"
-          class="nav-tab px-3 py-2 rounded-xl text-xs xl:text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-all duration-200 cursor-pointer"
-        >
-          🍕 Restaurantes
-        </button>
-      </div>
-
-      <!-- RIGHT CONTROLS: THEME SWITCHER + API STATUS PILL -->
-      <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-        
-        <!-- Live Status Pill (Diseño RCManager) -->
-        <div class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 ring-1 ring-inset ring-emerald-500/20">
-          <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>Supabase Online</span>
-        </div>
-
-        <!-- Theme Toggle Button (Exacto al de RCManager) -->
-        <button 
-          type="button"
-          onclick="toggleTheme()"
-          id="theme-toggle-btn"
-          aria-label="Cambiar tema"
-          class="cursor-pointer h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-amber-400 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700 flex items-center justify-center transition-all active:scale-95"
-        >
-          <!-- Moon Icon (Light mode) -->
-          <svg id="theme-moon" class="h-4 w-4 hidden" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
-          </svg>
-          <!-- Sun Icon (Dark mode) -->
-          <svg id="theme-sun" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
-          </svg>
-        </button>
-      </div>
-
-    </div>
-  </nav>
-
-  <!-- ========================================================================= -->
-  <!-- MAIN CONTENT: ESTRUCTURA EXACTA DE CREDITS.COMPONENT Y PARKS.COMPONENT    -->
-  <!-- ========================================================================= -->
-  <main class="min-h-screen pt-24 sm:pt-28 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl 2xl:max-w-8xl mx-auto w-full animate-fade-in-up">
-    
-    <!-- HEADER BAR REDONDEADA [2rem] CON DECORACIONES BLUR SUTILES -->
-    <div class="relative flex flex-col lg:flex-row items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 sm:px-6 sm:py-5 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100/80 dark:border-slate-700/80 overflow-hidden mb-8">
-      
-      <!-- Decoración sutil de fondo de RCManager -->
-      <div class="absolute -right-20 -top-20 w-64 h-64 bg-blue-50/50 dark:bg-blue-900/20 rounded-full blur-3xl pointer-events-none"></div>
-      <div class="absolute -left-20 -bottom-20 w-64 h-64 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-full blur-3xl pointer-events-none"></div>
-
-      <!-- Título de sección & Subtítulo -->
-      <div class="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-3 relative z-10 w-full lg:w-auto overflow-hidden">
-        <h1 id="page-title" class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight shrink-0">
-          Montañas Rusas
-        </h1>
-        <p id="page-desc" class="text-slate-500 dark:text-slate-400 font-medium text-xs sm:text-sm truncate">
-          Explorando registros de coaster en tiempo real desde Supabase.
-        </p>
-      </div>
-
-      <!-- BARRA DE ACCIÓN: BUSCADOR REDONDEADO [1.25rem] + VISTA SWITCH + cURL -->
-      <div class="flex flex-row items-center gap-2.5 w-full lg:max-w-[34rem] relative z-10">
-        
-        <!-- Search Input estilizado como RCManager -->
-        <div class="relative flex-1 group">
-          <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 dark:text-slate-500 transition-colors duration-300 group-focus-within:text-blue-600 dark:text-blue-400">
-            <svg class="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-          <input 
-            type="text" 
-            id="search-input"
-            oninput="handleSearch(this.value)"
-            placeholder="Buscar por nombre, parque o país..." 
-            class="block w-full rounded-[1.25rem] border-0 py-2.5 sm:py-3 pl-10 sm:pl-12 pr-4 text-slate-700 dark:text-slate-200 shadow-sm ring-1 ring-inset ring-slate-200/80 dark:ring-slate-600/80 placeholder:text-slate-400 dark:text-slate-500 focus:ring-2 focus:ring-inset focus:ring-blue-600 focus:shadow-[0_8px_30px_rgb(59,130,246,0.15)] bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-900 focus:bg-white dark:focus:bg-slate-800 transition-all duration-300 text-sm font-semibold outline-none"
-          />
-        </div>
-
-        <!-- Toggle Modo Vista: Tarjetas / JSON RAW -->
-        <div class="flex items-center bg-slate-100/80 dark:bg-slate-700/80 rounded-[1.25rem] p-1 border border-slate-200 dark:border-slate-600 shrink-0">
-          <button 
-            onclick="setViewMode('cards')" 
-            id="btn-view-cards"
-            title="Vista de Tarjetas Visuales"
-            class="cursor-pointer p-2 rounded-xl transition-all bg-white dark:bg-slate-800 shadow-sm text-blue-600 dark:text-blue-400"
-          >
-            <!-- Grid icon -->
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-              <rect x="3" y="3" width="7" height="7" rx="1.5"/>
-              <rect x="14" y="3" width="7" height="7" rx="1.5"/>
-              <rect x="14" y="14" width="7" height="7" rx="1.5"/>
-              <rect x="3" y="14" width="7" height="7" rx="1.5"/>
-            </svg>
-          </button>
-          
-          <button 
-            onclick="setViewMode('json')" 
-            id="btn-view-json"
-            title="Vista JSON crudo para desarrolladores"
-            class="cursor-pointer p-2 rounded-xl transition-all text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-          >
-            <!-- Code icon -->
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-            </svg>
-          </button>
-        </div>
-
-        <!-- Botón cURL -->
-        <button 
-          onclick="copyCurl()" 
-          title="Copiar llamada cURL"
-          class="cursor-pointer hidden sm:flex items-center gap-1.5 px-3.5 py-2.5 rounded-[1.25rem] bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-200 dark:border-slate-600 transition-all font-mono text-xs font-bold shrink-0"
-        >
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-          <span id="curl-label">cURL</span>
-        </button>
-
-      </div>
-    </div>
-
-    <!-- SUB-BARRA INFORMATIVA: ENDPOINT ACTIVO + CONTADOR -->
-    <div class="flex items-center justify-between mb-6 px-2">
-      <div class="flex items-center gap-2">
-        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold font-mono bg-blue-600 text-white shadow-xs">
-          GET
+  <aside 
+    id="sidebar" 
+    class="fixed inset-y-0 left-0 z-40 w-72 xl:w-80 border-r border-zinc-900/10 dark:border-white/10 bg-white dark:bg-zinc-900 px-6 pt-4 pb-8 overflow-y-auto -translate-x-full lg:translate-x-0 transition-transform duration-200"
+  >
+    <div class="flex items-center justify-between pb-6 border-b border-zinc-900/5 dark:border-white/5">
+      <a href="/" class="flex items-center gap-2.5 group">
+        <svg class="h-6 w-6 text-emerald-500 transition-transform duration-300 group-hover:scale-105" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2.5 17s3-11 6.5-11 5 11 8.5 11 4.5-8 4.5-8" />
+          <path d="M2.5 21s3-11 6.5-11 5 11 8.5 11 4.5-8 4.5-8" opacity="0.3" stroke-width="2" />
+          <rect x="7" y="4.5" width="3" height="2" rx="0.5" fill="currentColor" stroke="none" />
+        </svg>
+        <span class="text-base font-bold tracking-tight text-zinc-900 dark:text-white">
+          RC<span class="text-emerald-500">Manager</span>
+          <span class="text-[11px] text-zinc-400 dark:text-zinc-500 ml-1 font-semibold">API</span>
         </span>
-        <code id="endpoint-path" class="text-xs sm:text-sm font-mono font-bold text-slate-700 dark:text-slate-300">
-          /api/coasters
-        </code>
-      </div>
+      </a>
 
-      <div class="flex items-center gap-3 text-xs font-bold text-slate-500 dark:text-slate-400">
-        <span id="items-badge">Cargando...</span>
-        <span class="hidden sm:inline">•</span>
-        <span id="speed-badge" class="font-mono text-blue-600 dark:text-blue-400">-- ms</span>
+      <button onclick="toggleMobileNav()" class="lg:hidden p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <!-- Quick Search bar -->
+    <div class="mt-4 mb-6">
+      <div class="relative">
+        <input 
+          type="text" 
+          id="nav-search" 
+          oninput="filterSidebar(this.value)" 
+          placeholder="Filtrar recursos..." 
+          class="w-full text-xs py-1.5 pl-8 pr-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-900/10 dark:border-white/10 text-zinc-700 dark:text-zinc-200 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+        />
+        <svg class="w-4 h-4 text-zinc-400 absolute left-2.5 top-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
       </div>
     </div>
 
-    <!-- ========================================================================= -->
-    <!-- CONTENIDO PRINCIPAL: LOADING STATE / CARDS GRID / JSON VIEW               -->
-    <!-- ========================================================================= -->
-    <div id="content-area">
-      <!-- Se inyecta dinámicamente -->
-    </div>
-
-  </main>
-
-  <!-- ========================================================================= -->
-  <!-- FOOTER: EXACTO AL ESTILO DE RCMANAGER                                    -->
-  <!-- ========================================================================= -->
-  <footer class="mt-auto border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 py-8 text-center text-xs text-slate-500 dark:text-slate-400 transition-colors">
-    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-      <div class="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-300">
-        <span>RC<span class="text-blue-600 dark:text-blue-400">Manager</span> Core API</span>
-        <span class="text-slate-400 dark:text-slate-600">|</span>
-        <span class="font-normal text-slate-500 dark:text-slate-400">Desarrollo y datos en vivo</span>
+    <!-- Navigation Tree -->
+    <nav class="space-y-6 text-sm">
+      
+      <div>
+        <h2 class="text-xs font-semibold text-zinc-900 dark:text-white mb-2">Guía General</h2>
+        <ul role="list" class="space-y-1 border-l border-zinc-900/10 dark:border-white/5 pl-2 text-xs">
+          <li>
+            <a 
+              href="#intro" 
+              onclick="setActiveNavLink(this)"
+              class="nav-link block py-1.5 px-3 rounded-md text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+            >
+              Introducción
+            </a>
+          </li>
+          <li>
+            <a 
+              href="#quickstart" 
+              onclick="setActiveNavLink(this)"
+              class="nav-link block py-1.5 px-3 rounded-md text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+            >
+              Base URL & Respuestas
+            </a>
+          </li>
+        </ul>
       </div>
-      <p class="text-[11px] text-slate-400">
-        Integración oficial con Supabase PostgreSQL • Compatible con RCManager Web & Mobile
-      </p>
+
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xs font-semibold text-zinc-900 dark:text-white">Recursos</h2>
+          <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">GET</span>
+        </div>
+
+        <ul role="list" class="space-y-1 border-l border-zinc-900/10 dark:border-white/5 pl-2 text-xs" id="nav-resources">
+          <li>
+            <a 
+              href="#coasters" 
+              onclick="setActiveNavLink(this)"
+              class="nav-link flex items-center justify-between py-1.5 px-3 rounded-md text-zinc-900 dark:text-white font-medium bg-zinc-900/5 dark:bg-white/5 transition-colors"
+            >
+              <span class="truncate">Montañas Rusas</span>
+              <span id="badge-nav-coasters" class="text-[11px] text-zinc-400 dark:text-zinc-500">29</span>
+            </a>
+          </li>
+          <li>
+            <a 
+              href="#parks" 
+              onclick="setActiveNavLink(this)"
+              class="nav-link flex items-center justify-between py-1.5 px-3 rounded-md text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+            >
+              <span class="truncate">Parques Temáticos</span>
+              <span id="badge-nav-parks" class="text-[11px] text-zinc-400 dark:text-zinc-500">4</span>
+            </a>
+          </li>
+          <li>
+            <a 
+              href="#attractions" 
+              onclick="setActiveNavLink(this)"
+              class="nav-link flex items-center justify-between py-1.5 px-3 rounded-md text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+            >
+              <span class="truncate">Atracciones</span>
+              <span id="badge-nav-attractions" class="text-[11px] text-zinc-400 dark:text-zinc-500">110</span>
+            </a>
+          </li>
+          <li>
+            <a 
+              href="#shows" 
+              onclick="setActiveNavLink(this)"
+              class="nav-link flex items-center justify-between py-1.5 px-3 rounded-md text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+            >
+              <span class="truncate">Espectáculos</span>
+              <span id="badge-nav-shows" class="text-[11px] text-zinc-400 dark:text-zinc-500">10</span>
+            </a>
+          </li>
+          <li>
+            <a 
+              href="#restaurants" 
+              onclick="setActiveNavLink(this)"
+              class="nav-link flex items-center justify-between py-1.5 px-3 rounded-md text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+            >
+              <span class="truncate">Restaurantes</span>
+              <span id="badge-nav-restaurants" class="text-[11px] text-zinc-400 dark:text-zinc-500">15</span>
+            </a>
+          </li>
+          <li>
+            <a 
+              href="#operators" 
+              onclick="setActiveNavLink(this)"
+              class="nav-link flex items-center justify-between py-1.5 px-3 rounded-md text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+            >
+              <span class="truncate">Operadores</span>
+              <span id="badge-nav-operators" class="text-[11px] text-zinc-400 dark:text-zinc-500">2</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+    </nav>
+
+    <!-- Sidebar footer status -->
+    <div class="mt-auto pt-6 border-t border-zinc-900/5 dark:border-white/5 text-[11px] text-zinc-400 dark:text-zinc-500 flex items-center justify-between">
+      <span>Supabase PostgreSQL</span>
+      <span class="flex items-center gap-1.5 text-emerald-500 font-medium">
+        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+        Conectado
+      </span>
     </div>
-  </footer>
+  </aside>
+
+  <!-- Mobile backdrop -->
+  <div id="backdrop" onclick="toggleMobileNav()" class="fixed inset-0 bg-zinc-900/50 z-30 hidden lg:hidden"></div>
 
   <!-- ========================================================================= -->
-  <!-- SCRIPT LÓGICA FRONTEND                                                    -->
+  <!-- MAIN PROTOCOL PAGE CONTENT                                                -->
   <!-- ========================================================================= -->
+  <div class="flex-1 lg:ml-72 xl:ml-80 flex flex-col min-w-0">
+
+    <!-- TOPBAR -->
+    <div class="sticky top-0 z-20 flex h-14 items-center justify-between gap-4 border-b border-zinc-900/10 dark:border-white/10 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm px-4 sm:px-6 lg:px-8">
+      
+      <button onclick="toggleMobileNav()" class="lg:hidden p-1.5 -ml-1 text-zinc-600 dark:text-zinc-300">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+
+      <div class="flex items-center gap-2 text-xs text-zinc-400">
+        <span class="text-zinc-900 dark:text-white font-semibold">RCManager API</span>
+        <span>/</span>
+        <span class="text-emerald-500 font-medium">REST Endpoints</span>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <!-- Exact Protocol URL pill -->
+        <button 
+          onclick="copyBaseUrl()" 
+          title="Copiar Base URL"
+          class="hidden sm:inline-flex items-center gap-2 rounded-full py-1 px-3 text-xs text-zinc-600 dark:text-zinc-400 bg-zinc-900/5 dark:bg-white/5 hover:bg-zinc-900/10 dark:hover:bg-white/10 transition-colors"
+        >
+          <span id="base-url-text">https://.../api</span>
+          <span id="base-copied-label" class="text-emerald-500 font-bold hidden">¡Copiado!</span>
+        </button>
+
+        <button 
+          type="button" 
+          onclick="toggleTheme()" 
+          class="flex size-7 items-center justify-center rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-900/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+          aria-label="Cambiar tema"
+        >
+          <svg id="theme-sun" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="4"/>
+            <path stroke-linecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41m14.14-14.14l-1.41 1.41"/>
+          </svg>
+          <svg id="theme-moon" class="h-4 w-4 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+          </svg>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- DOCUMENTATION CONTENT CONTAINER -->
+    <main class="flex-auto px-4 sm:px-6 lg:px-8 py-10 max-w-7xl">
+      
+      <!-- SECTION: INTRODUCCIÓN -->
+      <section id="intro" class="scroll-mt-24 mb-16">
+        <div class="max-w-2xl">
+          <h1 class="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white sm:text-4xl">
+            API Documentation
+          </h1>
+          <p class="mt-4 text-base text-zinc-600 dark:text-zinc-400 leading-relaxed">
+            Bienvenido a la referencia oficial de la API de RCManager. Utiliza estos endpoints públicos para consultar datos en tiempo real sobre montañas rusas, parques temáticos, atracciones, espectáculos y restaurantes directamente desde nuestra base de datos PostgreSQL en Supabase.
+          </p>
+        </div>
+
+        <div id="quickstart" class="scroll-mt-24 mt-8 p-4 rounded-xl border border-zinc-900/10 dark:border-white/10 bg-zinc-50 dark:bg-zinc-850/50 max-w-2xl">
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-white mb-2">
+            Especificación de Respuesta
+          </h3>
+          <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+            Todas las peticiones son de tipo <code class="px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200">GET</code>, retornan datos en formato JSON (<code class="px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200">application/json</code>) y tienen cabeceras CORS abiertas para integraciones web y móviles.
+          </p>
+        </div>
+      </section>
+
+      <hr class="border-zinc-900/5 dark:border-white/5 my-12" />
+
+      <!-- ENDPOINT 1: COASTERS -->
+      <section id="coasters" class="scroll-mt-20 mb-20">
+        
+        <!-- Tag & Path Bar (Exact Protocol styling) -->
+        <div class="flex items-center gap-x-3 mb-2">
+          <span class="text-[11px] font-semibold rounded-md px-1.5 py-0.5 ring-1 ring-inset ring-emerald-300 dark:ring-emerald-400/30 bg-emerald-400/10 text-emerald-600 dark:text-emerald-400">
+            GET
+          </span>
+          <span class="h-0.5 w-0.5 rounded-full bg-zinc-300 dark:bg-zinc-600"></span>
+          <span class="text-xs text-zinc-400">/api/coasters</span>
+        </div>
+
+        <h2 class="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white mb-6">
+          Listar todas las Montañas Rusas
+        </h2>
+
+        <div class="grid grid-cols-1 items-start gap-x-12 gap-y-8 xl:grid-cols-2">
+          
+          <div class="text-sm text-zinc-600 dark:text-zinc-400">
+            <p class="mb-6 leading-relaxed">
+              Devuelve la colección completa de montañas rusas almacenadas en la base de datos (<strong class="text-zinc-900 dark:text-white">29 registros reales</strong>), incluyendo fabricante, altura, velocidad, longitud, modelo y la información del parque temático anfitrión.
+            </p>
+
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-white mb-3">
+              Atributos del Modelo
+            </h3>
+
+            <ul role="list" class="divide-y divide-zinc-900/5 dark:divide-white/5 text-xs">
+              <li class="py-3">
+                <div class="flex items-baseline gap-2">
+                  <code class="text-zinc-900 dark:text-white font-semibold">id</code>
+                  <span class="text-zinc-400 text-[11px]">integer</span>
+                </div>
+                <p class="mt-1 text-zinc-500 dark:text-zinc-400">Identificador único de la montaña rusa.</p>
+              </li>
+              <li class="py-3">
+                <div class="flex items-baseline gap-2">
+                  <code class="text-zinc-900 dark:text-white font-semibold">name</code>
+                  <span class="text-zinc-400 text-[11px]">string</span>
+                </div>
+                <p class="mt-1 text-zinc-500 dark:text-zinc-400">Nombre comercial de la atracción (ej: Shambhala, Dragon Khan).</p>
+              </li>
+              <li class="py-3">
+                <div class="flex items-baseline gap-2">
+                  <code class="text-zinc-900 dark:text-white font-semibold">manufacturer</code>
+                  <span class="text-zinc-400 text-[11px]">string</span>
+                </div>
+                <p class="mt-1 text-zinc-500 dark:text-zinc-400">Fabricante o empresa constructora (B&M, Intamin, Mack Rides).</p>
+              </li>
+              <li class="py-3">
+                <div class="flex items-baseline gap-2">
+                  <code class="text-zinc-900 dark:text-white font-semibold">speed</code>
+                  <span class="text-zinc-400 text-[11px]">float</span>
+                </div>
+                <p class="mt-1 text-zinc-500 dark:text-zinc-400">Velocidad máxima registrada en kilómetros por hora (km/h).</p>
+              </li>
+              <li class="py-3">
+                <div class="flex items-baseline gap-2">
+                  <code class="text-zinc-900 dark:text-white font-semibold">height</code>
+                  <span class="text-zinc-400 text-[11px]">float</span>
+                </div>
+                <p class="mt-1 text-zinc-500 dark:text-zinc-400">Altura máxima de caída en metros.</p>
+              </li>
+              <li class="py-3">
+                <div class="flex items-baseline gap-2">
+                  <code class="text-zinc-900 dark:text-white font-semibold">park</code>
+                  <span class="text-zinc-400 text-[11px]">object</span>
+                </div>
+                <p class="mt-1 text-zinc-500 dark:text-zinc-400">Relación anidada con el parque temático donde está instalada.</p>
+              </li>
+            </ul>
+          </div>
+
+          <div class="protocol-sticky space-y-4">
+            
+            <!-- Request Card -->
+            <div class="overflow-hidden rounded-2xl bg-zinc-900 shadow-md ring-1 ring-white/10">
+              <div class="flex items-center justify-between border-b border-zinc-800 px-4 py-2 text-xs">
+                <span class="font-semibold text-zinc-200">Request</span>
+                <span class="text-[11px] text-zinc-400">cURL</span>
+              </div>
+              <div class="p-4 text-xs text-zinc-200 overflow-x-auto relative group">
+                <code id="curl-code-coasters">curl -X GET /api/coasters</code>
+                <button 
+                  onclick="copyEndpointCurl('coasters')" 
+                  class="absolute right-3 top-3 px-2 py-1 rounded bg-zinc-800 text-[10px] text-zinc-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                >
+                  Copiar
+                </button>
+              </div>
+            </div>
+
+            <!-- Response Card -->
+            <div class="overflow-hidden rounded-2xl bg-zinc-900 shadow-md ring-1 ring-white/10">
+              <div class="flex items-center justify-between border-b border-zinc-800 px-4 py-2.5 text-xs">
+                <div class="flex items-center gap-2">
+                  <span class="font-semibold text-zinc-200">Response</span>
+                  <span id="badge-status-coasters" class="text-[11px] text-zinc-400 font-semibold bg-zinc-800 ring-1 ring-inset ring-zinc-700 px-1.5 py-0.5 rounded-md">Conectando...</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span id="latency-coasters" class="text-[11px] text-zinc-400">-- ms</span>
+                  <button 
+                    onclick="fetchEndpointData('coasters')" 
+                    class="text-xs text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+                    title="Recargar datos de la BBDD"
+                  >
+                    ↻
+                  </button>
+                </div>
+              </div>
+
+              <div class="p-4 text-xs overflow-auto max-h-[380px] leading-relaxed">
+                <pre id="pre-coasters" class="text-zinc-200">// Cargando datos reales de Supabase...</pre>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+      <hr class="border-zinc-900/5 dark:border-white/5 my-12" />
+
+      <!-- ENDPOINT 2: PARKS -->
+      <section id="parks" class="scroll-mt-20 mb-20">
+        
+        <div class="flex items-center gap-x-3 mb-2">
+          <span class="text-[11px] font-semibold rounded-md px-1.5 py-0.5 ring-1 ring-inset ring-emerald-300 dark:ring-emerald-400/30 bg-emerald-400/10 text-emerald-600 dark:text-emerald-400">
+            GET
+          </span>
+          <span class="h-0.5 w-0.5 rounded-full bg-zinc-300 dark:bg-zinc-600"></span>
+          <span class="text-xs text-zinc-400">/api/parks</span>
+        </div>
+
+        <h2 class="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white mb-6">
+          Listar todos los Parques Temáticos
+        </h2>
+
+        <div class="grid grid-cols-1 items-start gap-x-12 gap-y-8 xl:grid-cols-2">
+          
+          <div class="text-sm text-zinc-600 dark:text-zinc-400">
+            <p class="mb-6 leading-relaxed">
+              Recupera los <strong class="text-zinc-900 dark:text-white">4 parques temáticos</strong> principales registrados en el sistema (PortAventura Park, Ferrari Land, Parque Warner Madrid y Parque de Atracciones de Madrid) junto con los datos de su operador gestor.
+            </p>
+
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-white mb-3">
+              Atributos del Modelo
+            </h3>
+
+            <ul role="list" class="divide-y divide-zinc-900/5 dark:divide-white/5 text-xs">
+              <li class="py-3">
+                <div class="flex items-baseline gap-2">
+                  <code class="text-zinc-900 dark:text-white font-semibold">id</code>
+                  <span class="text-zinc-400 text-[11px]">integer</span>
+                </div>
+                <p class="mt-1 text-zinc-500 dark:text-zinc-400">ID del parque temático.</p>
+              </li>
+              <li class="py-3">
+                <div class="flex items-baseline gap-2">
+                  <code class="text-zinc-900 dark:text-white font-semibold">name</code>
+                  <span class="text-zinc-400 text-[11px]">string</span>
+                </div>
+                <p class="mt-1 text-zinc-500 dark:text-zinc-400">Nombre del parque.</p>
+              </li>
+              <li class="py-3">
+                <div class="flex items-baseline gap-2">
+                  <code class="text-zinc-900 dark:text-white font-semibold">country</code>
+                  <span class="text-zinc-400 text-[11px]">string</span>
+                </div>
+                <p class="mt-1 text-zinc-500 dark:text-zinc-400">País de localización del complejo.</p>
+              </li>
+              <li class="py-3">
+                <div class="flex items-baseline gap-2">
+                  <code class="text-zinc-900 dark:text-white font-semibold">city</code>
+                  <span class="text-zinc-400 text-[11px]">string</span>
+                </div>
+                <p class="mt-1 text-zinc-500 dark:text-zinc-400">Ciudad o municipio.</p>
+              </li>
+              <li class="py-3">
+                <div class="flex items-baseline gap-2">
+                  <code class="text-zinc-900 dark:text-white font-semibold">operator</code>
+                  <span class="text-zinc-400 text-[11px]">object</span>
+                </div>
+                <p class="mt-1 text-zinc-500 dark:text-zinc-400">Empresa operadora propietaria del recinto.</p>
+              </li>
+            </ul>
+          </div>
+
+          <div class="protocol-sticky space-y-4">
+            
+            <div class="overflow-hidden rounded-2xl bg-zinc-900 shadow-md ring-1 ring-white/10">
+              <div class="flex items-center justify-between border-b border-zinc-800 px-4 py-2 text-xs">
+                <span class="font-semibold text-zinc-200">Request</span>
+                <span class="text-[11px] text-zinc-400">cURL</span>
+              </div>
+              <div class="p-4 text-xs text-zinc-200 overflow-x-auto relative group">
+                <code id="curl-code-parks">curl -X GET /api/parks</code>
+                <button 
+                  onclick="copyEndpointCurl('parks')" 
+                  class="absolute right-3 top-3 px-2 py-1 rounded bg-zinc-800 text-[10px] text-zinc-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                >
+                  Copiar
+                </button>
+              </div>
+            </div>
+
+            <div class="overflow-hidden rounded-2xl bg-zinc-900 shadow-md ring-1 ring-white/10">
+              <div class="flex items-center justify-between border-b border-zinc-800 px-4 py-2.5 text-xs">
+                <div class="flex items-center gap-2">
+                  <span class="font-semibold text-zinc-200">Response</span>
+                  <span id="badge-status-parks" class="text-[11px] text-zinc-400 font-semibold bg-zinc-800 ring-1 ring-inset ring-zinc-700 px-1.5 py-0.5 rounded-md">Conectando...</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span id="latency-parks" class="text-[11px] text-zinc-400">-- ms</span>
+                  <button onclick="fetchEndpointData('parks')" class="text-xs text-emerald-400 hover:text-emerald-300 cursor-pointer">↻</button>
+                </div>
+              </div>
+
+              <div class="p-4 text-xs overflow-auto max-h-[380px] leading-relaxed">
+                <pre id="pre-parks" class="text-zinc-200">// Cargando datos reales de Supabase...</pre>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+      <hr class="border-zinc-900/5 dark:border-white/5 my-12" />
+
+      <!-- ENDPOINT 3: ATTRACTIONS -->
+      <section id="attractions" class="scroll-mt-20 mb-20">
+        
+        <div class="flex items-center gap-x-3 mb-2">
+          <span class="text-[11px] font-semibold rounded-md px-1.5 py-0.5 ring-1 ring-inset ring-emerald-300 dark:ring-emerald-400/30 bg-emerald-400/10 text-emerald-600 dark:text-emerald-400">
+            GET
+          </span>
+          <span class="h-0.5 w-0.5 rounded-full bg-zinc-300 dark:bg-zinc-600"></span>
+          <span class="text-xs text-zinc-400">/api/attractions</span>
+        </div>
+
+        <h2 class="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white mb-6">
+          Listar todas las Atracciones
+        </h2>
+
+        <div class="grid grid-cols-1 items-start gap-x-12 gap-y-8 xl:grid-cols-2">
+          
+          <div class="text-sm text-zinc-600 dark:text-zinc-400">
+            <p class="mb-6 leading-relaxed">
+              Consulta el catálogo de <strong class="text-zinc-900 dark:text-white">110 atracciones complementarias</strong> (dark rides, flat rides, torres de caída libre y atracciones acuáticas) asignadas a cada parque.
+            </p>
+
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-white mb-3">
+              Atributos del Modelo
+            </h3>
+
+            <ul role="list" class="divide-y divide-zinc-900/5 dark:divide-white/5 text-xs">
+              <li class="py-3">
+                <div class="flex items-baseline gap-2">
+                  <code class="text-zinc-900 dark:text-white font-semibold">id</code>
+                  <span class="text-zinc-400 text-[11px]">integer</span>
+                </div>
+                <p class="mt-1 text-zinc-500 dark:text-zinc-400">ID único de la atracción.</p>
+              </li>
+              <li class="py-3">
+                <div class="flex items-baseline gap-2">
+                  <code class="text-zinc-900 dark:text-white font-semibold">name</code>
+                  <span class="text-zinc-400 text-[11px]">string</span>
+                </div>
+                <p class="mt-1 text-zinc-500 dark:text-zinc-400">Nombre de la atracción.</p>
+              </li>
+              <li class="py-3">
+                <div class="flex items-baseline gap-2">
+                  <code class="text-zinc-900 dark:text-white font-semibold">type</code>
+                  <span class="text-zinc-400 text-[11px]">string</span>
+                </div>
+                <p class="mt-1 text-zinc-500 dark:text-zinc-400">Tipo: FLAT_RIDE, WATER_RIDE, DARK_RIDE, SIMULATOR, etc.</p>
+              </li>
+              <li class="py-3">
+                <div class="flex items-baseline gap-2">
+                  <code class="text-zinc-900 dark:text-white font-semibold">status</code>
+                  <span class="text-zinc-400 text-[11px]">string</span>
+                </div>
+                <p class="mt-1 text-zinc-500 dark:text-zinc-400">Estado operativo (OPERATING, CLOSED).</p>
+              </li>
+            </ul>
+          </div>
+
+          <div class="protocol-sticky space-y-4">
+            <div class="overflow-hidden rounded-2xl bg-zinc-900 shadow-md ring-1 ring-white/10">
+              <div class="flex items-center justify-between border-b border-zinc-800 px-4 py-2 text-xs">
+                <span class="font-semibold text-zinc-200">Request</span>
+                <span class="text-[11px] text-zinc-400">cURL</span>
+              </div>
+              <div class="p-4 text-xs text-zinc-200 overflow-x-auto relative group">
+                <code id="curl-code-attractions">curl -X GET /api/attractions</code>
+                <button 
+                  onclick="copyEndpointCurl('attractions')" 
+                  class="absolute right-3 top-3 px-2 py-1 rounded bg-zinc-800 text-[10px] text-zinc-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                >
+                  Copiar
+                </button>
+              </div>
+            </div>
+
+            <div class="overflow-hidden rounded-2xl bg-zinc-900 shadow-md ring-1 ring-white/10">
+              <div class="flex items-center justify-between border-b border-zinc-800 px-4 py-2.5 text-xs">
+                <div class="flex items-center gap-2">
+                  <span class="font-semibold text-zinc-200">Response</span>
+                  <span id="badge-status-attractions" class="text-[11px] text-zinc-400 font-semibold bg-zinc-800 ring-1 ring-inset ring-zinc-700 px-1.5 py-0.5 rounded-md">Conectando...</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span id="latency-attractions" class="text-[11px] text-zinc-400">-- ms</span>
+                  <button onclick="fetchEndpointData('attractions')" class="text-xs text-emerald-400 hover:text-emerald-300 cursor-pointer">↻</button>
+                </div>
+              </div>
+              <div class="p-4 text-xs overflow-auto max-h-[380px] leading-relaxed">
+                <pre id="pre-attractions" class="text-zinc-200">// Cargando datos reales de Supabase...</pre>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <hr class="border-zinc-900/5 dark:border-white/5 my-12" />
+
+      <!-- SHOWS -->
+      <section id="shows" class="scroll-mt-20 mb-20">
+        <div class="flex items-center gap-x-3 mb-2">
+          <span class="text-[11px] font-semibold rounded-md px-1.5 py-0.5 ring-1 ring-inset ring-emerald-300 dark:ring-emerald-400/30 bg-emerald-400/10 text-emerald-600 dark:text-emerald-400">GET</span>
+          <span class="h-0.5 w-0.5 rounded-full bg-zinc-300 dark:bg-zinc-600"></span>
+          <span class="text-xs text-zinc-400">/api/shows</span>
+        </div>
+        <h2 class="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white mb-6">Listar Espectáculos</h2>
+        <div class="grid grid-cols-1 items-start gap-x-12 gap-y-8 xl:grid-cols-2">
+          <div class="text-sm text-zinc-600 dark:text-zinc-400">
+            <p class="leading-relaxed">
+              Colección de <strong class="text-zinc-900 dark:text-white">10 espectáculos</strong> teatrales, pasacalles y shows de acrobacias en los parques.
+            </p>
+          </div>
+          <div class="protocol-sticky space-y-4">
+            <div class="overflow-hidden rounded-2xl bg-zinc-900 shadow-md ring-1 ring-white/10">
+              <div class="flex items-center justify-between border-b border-zinc-800 px-4 py-2 text-xs">
+                <span class="font-semibold text-zinc-200">Request</span>
+                <span class="text-[11px] text-zinc-400">cURL</span>
+              </div>
+              <div class="p-4 text-xs text-zinc-200 overflow-x-auto relative group">
+                <code id="curl-code-shows">curl -X GET /api/shows</code>
+                <button 
+                  onclick="copyEndpointCurl('shows')" 
+                  class="absolute right-3 top-3 px-2 py-1 rounded bg-zinc-800 text-[10px] text-zinc-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                >
+                  Copiar
+                </button>
+              </div>
+            </div>
+
+            <div class="overflow-hidden rounded-2xl bg-zinc-900 shadow-md ring-1 ring-white/10">
+              <div class="flex items-center justify-between border-b border-zinc-800 px-4 py-2.5 text-xs">
+                <div class="flex items-center gap-2">
+                  <span class="font-semibold text-zinc-200">Response</span>
+                  <span id="badge-status-shows" class="text-[11px] text-zinc-400 font-semibold bg-zinc-800 ring-1 ring-inset ring-zinc-700 px-1.5 py-0.5 rounded-md">Conectando...</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span id="latency-shows" class="text-[11px] text-zinc-400">-- ms</span>
+                  <button onclick="fetchEndpointData('shows')" class="text-xs text-emerald-400 hover:text-emerald-300 cursor-pointer">↻</button>
+                </div>
+              </div>
+              <div class="p-4 text-xs overflow-auto max-h-[300px] leading-relaxed">
+                <pre id="pre-shows" class="text-zinc-200">// Cargando datos reales...</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <hr class="border-zinc-900/5 dark:border-white/5 my-12" />
+
+      <!-- RESTAURANTS -->
+      <section id="restaurants" class="scroll-mt-20 mb-20">
+        <div class="flex items-center gap-x-3 mb-2">
+          <span class="text-[11px] font-semibold rounded-md px-1.5 py-0.5 ring-1 ring-inset ring-emerald-300 dark:ring-emerald-400/30 bg-emerald-400/10 text-emerald-600 dark:text-emerald-400">GET</span>
+          <span class="h-0.5 w-0.5 rounded-full bg-zinc-300 dark:bg-zinc-600"></span>
+          <span class="text-xs text-zinc-400">/api/restaurants</span>
+        </div>
+        <h2 class="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white mb-6">Listar Restaurantes</h2>
+        <div class="grid grid-cols-1 items-start gap-x-12 gap-y-8 xl:grid-cols-2">
+          <div class="text-sm text-zinc-600 dark:text-zinc-400">
+            <p class="leading-relaxed">
+              Colección de <strong class="text-zinc-900 dark:text-white">15 restaurantes</strong> y puntos gastronómicos con su tipo de cocina (FAST_FOOD, BUFFET, TABLE_SERVICE).
+            </p>
+          </div>
+          <div class="protocol-sticky space-y-4">
+            <div class="overflow-hidden rounded-2xl bg-zinc-900 shadow-md ring-1 ring-white/10">
+              <div class="flex items-center justify-between border-b border-zinc-800 px-4 py-2 text-xs">
+                <span class="font-semibold text-zinc-200">Request</span>
+                <span class="text-[11px] text-zinc-400">cURL</span>
+              </div>
+              <div class="p-4 text-xs text-zinc-200 overflow-x-auto relative group">
+                <code id="curl-code-restaurants">curl -X GET /api/restaurants</code>
+                <button 
+                  onclick="copyEndpointCurl('restaurants')" 
+                  class="absolute right-3 top-3 px-2 py-1 rounded bg-zinc-800 text-[10px] text-zinc-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                >
+                  Copiar
+                </button>
+              </div>
+            </div>
+
+            <div class="overflow-hidden rounded-2xl bg-zinc-900 shadow-md ring-1 ring-white/10">
+              <div class="flex items-center justify-between border-b border-zinc-800 px-4 py-2.5 text-xs">
+                <div class="flex items-center gap-2">
+                  <span class="font-semibold text-zinc-200">Response</span>
+                  <span id="badge-status-restaurants" class="text-[11px] text-zinc-400 font-semibold bg-zinc-800 ring-1 ring-inset ring-zinc-700 px-1.5 py-0.5 rounded-md">Conectando...</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span id="latency-restaurants" class="text-[11px] text-zinc-400">-- ms</span>
+                  <button onclick="fetchEndpointData('restaurants')" class="text-xs text-emerald-400 hover:text-emerald-300 cursor-pointer">↻</button>
+                </div>
+              </div>
+              <div class="p-4 text-xs overflow-auto max-h-[300px] leading-relaxed">
+                <pre id="pre-restaurants" class="text-zinc-200">// Cargando datos reales...</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <hr class="border-zinc-900/5 dark:border-white/5 my-12" />
+
+      <!-- OPERATORS -->
+      <section id="operators" class="scroll-mt-20 mb-20">
+        <div class="flex items-center gap-x-3 mb-2">
+          <span class="text-[11px] font-semibold rounded-md px-1.5 py-0.5 ring-1 ring-inset ring-emerald-300 dark:ring-emerald-400/30 bg-emerald-400/10 text-emerald-600 dark:text-emerald-400">GET</span>
+          <span class="h-0.5 w-0.5 rounded-full bg-zinc-300 dark:bg-zinc-600"></span>
+          <span class="text-xs text-zinc-400">/api/operators</span>
+        </div>
+        <h2 class="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white mb-6">Listar Operadores</h2>
+        <div class="grid grid-cols-1 items-start gap-x-12 gap-y-8 xl:grid-cols-2">
+          <div class="text-sm text-zinc-600 dark:text-zinc-400">
+            <p class="leading-relaxed">
+              Empresas gestoras y matrices de parques temáticos (<strong class="text-zinc-900 dark:text-white">2 operadores reales</strong>).
+            </p>
+          </div>
+          <div class="protocol-sticky space-y-4">
+            <div class="overflow-hidden rounded-2xl bg-zinc-900 shadow-md ring-1 ring-white/10">
+              <div class="flex items-center justify-between border-b border-zinc-800 px-4 py-2 text-xs">
+                <span class="font-semibold text-zinc-200">Request</span>
+                <span class="text-[11px] text-zinc-400">cURL</span>
+              </div>
+              <div class="p-4 text-xs text-zinc-200 overflow-x-auto relative group">
+                <code id="curl-code-operators">curl -X GET /api/operators</code>
+                <button 
+                  onclick="copyEndpointCurl('operators')" 
+                  class="absolute right-3 top-3 px-2 py-1 rounded bg-zinc-800 text-[10px] text-zinc-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                >
+                  Copiar
+                </button>
+              </div>
+            </div>
+
+            <div class="overflow-hidden rounded-2xl bg-zinc-900 shadow-md ring-1 ring-white/10">
+              <div class="flex items-center justify-between border-b border-zinc-800 px-4 py-2.5 text-xs">
+                <div class="flex items-center gap-2">
+                  <span class="font-semibold text-zinc-200">Response</span>
+                  <span id="badge-status-operators" class="text-[11px] text-zinc-400 font-semibold bg-zinc-800 ring-1 ring-inset ring-zinc-700 px-1.5 py-0.5 rounded-md">Conectando...</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span id="latency-operators" class="text-[11px] text-zinc-400">-- ms</span>
+                  <button onclick="fetchEndpointData('operators')" class="text-xs text-emerald-400 hover:text-emerald-300 cursor-pointer">↻</button>
+                </div>
+              </div>
+              <div class="p-4 text-xs overflow-auto max-h-[300px] leading-relaxed">
+                <pre id="pre-operators" class="text-zinc-200">// Cargando datos reales...</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-zinc-900/5 dark:border-white/5 py-8 px-4 sm:px-6 lg:px-8 text-xs text-zinc-500 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <p>© 2026 RCManager Core API • Real-Time Theme Park Engine</p>
+      <div class="flex items-center gap-4">
+        <span>Prisma 7</span>
+        <span>•</span>
+        <span>Express 5</span>
+        <span>•</span>
+        <span>Supabase</span>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
   <script>
-    let activeCategory = 'coasters';
-    let rawData = [];
-    let currentFiltered = [];
-    let viewMode = 'cards'; // 'cards' | 'json'
-
-    const categoryMeta = {
-      coasters: {
-        title: 'Montañas Rusas',
-        desc: 'Explora y consulta las especificaciones técnicas completas de coasters registradas.',
-        path: '/api/coasters',
-        emoji: '🎢'
-      },
-      parks: {
-        title: 'Parques Temáticos',
-        desc: 'Parques de ocio mundiales asociados con su operador y geolocalización.',
-        path: '/api/parks',
-        emoji: '🏰'
-      },
-      attractions: {
-        title: 'Atracciones',
-        desc: 'Dark rides, atracciones acuáticas, torres de caída y flat rides.',
-        path: '/api/attractions',
-        emoji: '🎡'
-      },
-      shows: {
-        title: 'Espectáculos',
-        desc: 'Obras teatrales, espectáculos pirotécnicos y pasacalles temáticos.',
-        path: '/api/shows',
-        emoji: '🎭'
-      },
-      restaurants: {
-        title: 'Restaurantes',
-        desc: 'Puntos gastronómicos, servicios de mesa y buffet de los parques.',
-        path: '/api/restaurants',
-        emoji: '🍕'
-      }
-    };
-
-    // Dark/Light theme toggle
     function toggleTheme() {
       const html = document.documentElement;
       const isDark = html.classList.toggle('dark');
       localStorage.setItem('theme', isDark ? 'dark' : 'light');
-      updateThemeIcon(isDark);
+      updateThemeUI(isDark);
     }
 
-    function updateThemeIcon(isDark) {
+    function updateThemeUI(isDark) {
       document.getElementById('theme-sun').classList.toggle('hidden', !isDark);
       document.getElementById('theme-moon').classList.toggle('hidden', isDark);
     }
 
-    // Inicializar tema guardado
-    if (localStorage.getItem('theme') === 'light') {
-      document.documentElement.classList.remove('dark');
-      updateThemeIcon(false);
-    } else {
-      document.documentElement.classList.add('dark');
-      updateThemeIcon(true);
+    function toggleMobileNav() {
+      const sidebar = document.getElementById('sidebar');
+      const backdrop = document.getElementById('backdrop');
+      sidebar.classList.toggle('-translate-x-full');
+      backdrop.classList.toggle('hidden');
     }
 
-    function selectCategory(cat) {
-      activeCategory = cat;
-      const meta = categoryMeta[cat];
-      
-      // Actualizar títulos
-      document.getElementById('page-title').innerText = meta.title;
-      document.getElementById('page-desc').innerText = meta.desc;
-      document.getElementById('endpoint-path').innerText = meta.path;
-      document.getElementById('search-input').value = '';
-
-      // Actualizar Navbar tabs
-      document.querySelectorAll('.nav-tab').forEach(tab => {
-        tab.className = "nav-tab px-3 py-2 rounded-xl text-xs xl:text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-all duration-200 cursor-pointer";
+    function setActiveNavLink(el) {
+      document.querySelectorAll('.nav-link').forEach(link => {
+        link.className = 'nav-link flex items-center justify-between py-1.5 px-3 rounded-md text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors';
       });
-      const activeTab = document.getElementById('nav-' + cat);
-      if (activeTab) {
-        activeTab.className = "nav-tab px-3 py-2 rounded-xl text-xs xl:text-sm font-semibold transition-all duration-200 cursor-pointer bg-blue-50 text-blue-600 dark:bg-blue-950/80 dark:text-blue-400 font-bold";
-      }
-
-      fetchData();
-    }
-
-    function setViewMode(mode) {
-      viewMode = mode;
-      const btnCards = document.getElementById('btn-view-cards');
-      const btnJson = document.getElementById('btn-view-json');
-
-      if (mode === 'cards') {
-        btnCards.className = "cursor-pointer p-2 rounded-xl transition-all bg-white dark:bg-slate-800 shadow-sm text-blue-600 dark:text-blue-400";
-        btnJson.className = "cursor-pointer p-2 rounded-xl transition-all text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200";
-      } else {
-        btnJson.className = "cursor-pointer p-2 rounded-xl transition-all bg-white dark:bg-slate-800 shadow-sm text-blue-600 dark:text-blue-400";
-        btnCards.className = "cursor-pointer p-2 rounded-xl transition-all text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200";
-      }
-      renderContent();
-    }
-
-    // Loader fiel al spinner track de RCManager
-    function renderLoading() {
-      const content = document.getElementById('content-area');
-      content.innerHTML = `
-        <div class="flex flex-col items-center justify-center py-24 sm:py-32 space-y-8 animate-fade-in">
-          <div class="relative">
-            <div class="h-20 w-20 relative">
-              <div class="absolute inset-0 border-8 border-slate-200 dark:border-slate-800 rounded-full"></div>
-              <div class="absolute inset-0 border-8 border-transparent border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin"></div>
-            </div>
-            <div class="absolute inset-0 flex items-center justify-center">
-              <svg class="h-8 w-8 text-blue-600 dark:text-blue-400 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-          </div>
-          <div class="text-center space-y-2 max-w-sm mx-auto px-6">
-            <h3 class="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Sincronizando con Supabase</h3>
-            <p class="text-slate-500 dark:text-slate-400 font-bold text-xs uppercase tracking-[0.2em] animate-pulse">Consultando /api/${activeCategory}...</p>
-          </div>
-        </div>
-      `;
-    }
-
-    async function fetchData() {
-      renderLoading();
-      const start = performance.now();
-
-      try {
-        const response = await fetch(`/api/${activeCategory}`);
-        const duration = Math.round(performance.now() - start);
-        document.getElementById('speed-badge').innerText = `${duration} ms`;
-
-        if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
-        
-        rawData = await response.json();
-        currentFiltered = [...rawData];
-        document.getElementById('items-badge').innerText = `${rawData.length} elementos`;
-
-        renderContent();
-      } catch (err) {
-        document.getElementById('speed-badge').innerText = `Error`;
-        document.getElementById('items-badge').innerText = `0 elementos`;
-        document.getElementById('content-area').innerHTML = `
-          <div class="rounded-3xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/50 dark:bg-rose-950/20 p-8 sm:p-12 text-center max-w-xl mx-auto my-12 animate-fade-in">
-            <div class="w-14 h-14 mx-auto rounded-2xl bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 flex items-center justify-center text-2xl mb-4">
-              ⚠️
-            </div>
-            <h3 class="text-lg font-black text-slate-800 dark:text-slate-100 mb-2">No se pudo conectar con la API</h3>
-            <p class="text-xs text-slate-600 dark:text-slate-400 font-mono bg-white dark:bg-slate-900 p-3 rounded-xl border border-rose-200 dark:border-rose-800 mb-4 select-all">
-              ${err.message}
-            </p>
-            <button onclick="fetchData()" class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-all">
-              Reintentar conexión
-            </button>
-          </div>
-        `;
+      el.className = 'nav-link flex items-center justify-between py-1.5 px-3 rounded-md text-zinc-900 dark:text-white font-medium bg-zinc-900/5 dark:bg-white/5 transition-colors';
+      if (window.innerWidth < 1024) {
+        toggleMobileNav();
       }
     }
 
-    function handleSearch(query) {
+    function filterSidebar(query) {
       const q = query.toLowerCase().trim();
-      if (!q) {
-        currentFiltered = [...rawData];
-      } else {
-        currentFiltered = rawData.filter(item => {
-          const name = (item.name || '').toLowerCase();
-          const park = (item.park?.name || '').toLowerCase();
-          const country = (item.country || item.park?.country || '').toLowerCase();
-          const city = (item.city || item.park?.city || '').toLowerCase();
-          const type = (item.type || '').toLowerCase();
-          return name.includes(q) || park.includes(q) || country.includes(q) || city.includes(q) || type.includes(q);
-        });
-      }
-      document.getElementById('items-badge').innerText = `${currentFiltered.length} de ${rawData.length} elementos`;
-      renderContent();
-    }
-
-    function renderContent() {
-      const content = document.getElementById('content-area');
-
-      // VISTA RAW JSON
-      if (viewMode === 'json') {
-        content.innerHTML = `
-          <div class="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/80 rounded-[2rem] p-6 shadow-sm overflow-hidden animate-fade-in">
-            <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-100 dark:border-slate-700/80 text-xs font-mono font-bold text-slate-500">
-              <span>RESPONSE PAYLOAD (JSON)</span>
-              <span>${currentFiltered.length} ITEMS</span>
-            </div>
-            <pre class="font-mono text-xs overflow-x-auto max-h-[600px] leading-relaxed p-4 bg-slate-50 dark:bg-slate-900/80 rounded-2xl border border-slate-200/60 dark:border-slate-800">${syntaxHighlight(currentFiltered)}</pre>
-          </div>
-        `;
-        return;
-      }
-
-      // VISTA TARJETAS (ESTRUCTURA EXACTA DE CREDITS Y PARKS DE RCMANAGER)
-      if (currentFiltered.length === 0) {
-        content.innerHTML = `
-          <div class="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-[2rem] p-12 text-center max-w-md mx-auto my-8 shadow-sm">
-            <span class="text-4xl mb-3 block">🔍</span>
-            <h4 class="font-bold text-slate-800 dark:text-slate-100 text-lg mb-1">Sin coincidencias</h4>
-            <p class="text-xs text-slate-500 dark:text-slate-400">No encontramos resultados para tu búsqueda.</p>
-          </div>
-        `;
-        return;
-      }
-
-      let cardsHtml = `
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8">
-      `;
-
-      currentFiltered.forEach(item => {
-        const title = item.name || 'Sin título';
-        const parkName = item.park?.name || item.operator?.name || (activeCategory === 'parks' ? (item.city + ', ' + item.country) : 'Parque no asignado');
-        const badge = item.type || item.status || (activeCategory === 'parks' ? (item.country || 'Park') : 'Attraction');
-        
-        // Imagen con fallback fiel a RCManager
-        const fallbackImg = 'https://images.unsplash.com/photo-1513889961551-628c1e5e2ee9?auto=format&fit=crop&q=80&w=800';
-        const imgUrl = item.imageUrl || item.image || fallbackImg;
-
-        cardsHtml += `
-          <div class="group bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-500 border border-slate-100 dark:border-slate-700/80 flex flex-col">
-            
-            <!-- IMAGE CONTAINER: Aspect Ratio [4/3] idéntico a RCManager -->
-            <div class="relative overflow-hidden bg-slate-100 dark:bg-slate-800 aspect-[4/3]">
-              <img 
-                src="${imgUrl}" 
-                alt="${title}"
-                loading="lazy"
-                onerror="this.src='${fallbackImg}'"
-                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-              />
-              <!-- BADGE FLOTANTE -->
-              <div class="absolute right-3 top-3">
-                <span class="inline-flex items-center px-3 py-1 text-xs font-bold rounded-full bg-white/95 dark:bg-slate-800/90 text-blue-700 dark:text-blue-400 backdrop-blur-md shadow-sm ring-1 ring-inset ring-blue-700/10">
-                  ${badge}
-                </span>
-              </div>
-            </div>
-
-            <!-- CONTENIDO DE LA TARJETA -->
-            <div class="p-6 flex-1 flex flex-col">
-              <div class="mb-4">
-                <h3 class="font-bold text-lg text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-1">
-                  ${title}
-                </h3>
-                <p class="text-slate-500 dark:text-slate-400 text-sm flex items-center gap-1.5 mt-1">
-                  <svg class="h-4 w-4 text-slate-400 dark:text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <span class="truncate font-medium">${parkName}</span>
-                </p>
-              </div>
-
-              <!-- STATS GRID: Altura, Velocidad, Longitud (para montañas rusas) o Datos Clave -->
-              <div class="grid grid-cols-3 border-y border-slate-100 dark:border-slate-700 py-3.5 mb-auto gap-2 text-center">
-                <div>
-                  <p class="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-400 font-bold mb-0.5">
-                    ${activeCategory === 'coasters' ? 'Alt' : 'Tipo'}
-                  </p>
-                  <p class="font-extrabold text-sm text-slate-800 dark:text-slate-100 truncate">
-                    ${item.height || item.intensity || item.cuisine || '-'}
-                  </p>
-                </div>
-                <div class="border-x border-slate-100 dark:border-slate-700">
-                  <p class="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-400 font-bold mb-0.5">
-                    ${activeCategory === 'coasters' ? 'Vel' : 'Estado'}
-                  </p>
-                  <p class="font-extrabold text-sm text-slate-800 dark:text-slate-100 truncate">
-                    ${item.speed || item.status || (activeCategory === 'parks' ? (item.country || '-') : '-')}
-                  </p>
-                </div>
-                <div>
-                  <p class="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-400 font-bold mb-0.5">
-                    ${activeCategory === 'coasters' ? 'Long' : 'Id API'}
-                  </p>
-                  <p class="font-extrabold text-sm text-slate-800 dark:text-slate-100 truncate">
-                    ${item.length || item.apiId || item.id || '-'}
-                  </p>
-                </div>
-              </div>
-
-              <!-- FOOTER DE TARJETA: Fabricante / Detalles + Botón Acción -->
-              <div class="mt-4 pt-2 flex items-center justify-between text-xs">
-                <span class="font-semibold text-slate-500 dark:text-slate-400 truncate pr-2">
-                  ${item.manufacturer || (activeCategory === 'parks' ? (item.coasters ? item.coasters.length + ' Coasters' : 'Parque') : 'RCManager')}
-                </span>
-                
-                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-blue-50 dark:bg-slate-700 text-blue-600 dark:text-blue-400 font-mono text-[11px] font-bold">
-                  ID: ${item.id}
-                </span>
-              </div>
-
-            </div>
-          </div>
-        `;
+      document.querySelectorAll('#nav-resources li').forEach(li => {
+        const text = li.innerText.toLowerCase();
+        li.classList.toggle('hidden', !text.includes(q));
       });
-
-      cardsHtml += `</div>`;
-      content.innerHTML = cardsHtml;
     }
 
-    function syntaxHighlight(json) {
-      if (typeof json != 'string') {
-        json = JSON.stringify(json, undefined, 2);
+    function copyText(str) {
+      navigator.clipboard.writeText(str);
+      alert('Copiado al portapapeles:\n' + str);
+    }
+
+    function copyBaseUrl() {
+      const url = window.location.origin + '/api';
+      navigator.clipboard.writeText(url);
+      const label = document.getElementById('base-copied-label');
+      label.classList.remove('hidden');
+      setTimeout(() => label.classList.add('hidden'), 1500);
+    }
+
+    function copyEndpointCurl(endpoint) {
+      const cmd = `curl -X GET ${window.location.origin}/api/${endpoint}`;
+      navigator.clipboard.writeText(cmd);
+      alert('Comando copiado:\n' + cmd);
+    }
+
+    function highlightJson(json) {
+      if (typeof json !== 'string') {
+        json = JSON.stringify(json, null, 2);
       }
       json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
-        let cls = 'json-num';
+        let cls = 'shiki-num';
         if (/^"/.test(match)) {
           if (/:$/.test(match)) {
-            cls = 'json-key';
+            cls = 'shiki-key';
           } else {
-            cls = 'json-str';
+            cls = 'shiki-str';
           }
         } else if (/true|false/.test(match)) {
-          cls = 'json-bool';
+          cls = 'shiki-bool';
         } else if (/null/.test(match)) {
-          cls = 'json-null';
+          cls = 'shiki-null';
         }
         return '<span class="' + cls + '">' + match + '</span>';
       });
     }
 
-    function copyCurl() {
-      const url = `${window.location.origin}/api/${activeCategory}`;
-      const cmd = `curl -X GET "${url}"`;
-      navigator.clipboard.writeText(cmd);
-      const label = document.getElementById('curl-label');
-      label.innerText = '¡Copiado!';
-      setTimeout(() => label.innerText = 'cURL', 1500);
+    // Dynamic response status updates based on real HTTP status
+    async function fetchEndpointData(endpoint) {
+      const preEl = document.getElementById(`pre-${endpoint}`);
+      const latencyEl = document.getElementById(`latency-${endpoint}`);
+      const navBadge = document.getElementById(`badge-nav-${endpoint}`);
+      const statusBadge = document.getElementById(`badge-status-${endpoint}`);
+
+      if (preEl) preEl.innerText = '// Consultando /api/' + endpoint + '...';
+      if (statusBadge) {
+        statusBadge.innerText = 'Cargando...';
+        statusBadge.className = 'text-[11px] text-zinc-400 font-semibold bg-zinc-800 ring-1 ring-inset ring-zinc-700 px-1.5 py-0.5 rounded-md';
+      }
+
+      const start = performance.now();
+
+      try {
+        const res = await fetch(`/api/${endpoint}`);
+        const duration = Math.round(performance.now() - start);
+        if (latencyEl) latencyEl.innerText = `${duration} ms`;
+
+        const isSuccess = res.status >= 200 && res.status < 300;
+        if (statusBadge) {
+          statusBadge.innerText = `${res.status} ${res.statusText || (isSuccess ? 'OK' : 'Error')}`;
+          if (isSuccess) {
+            statusBadge.className = 'text-[11px] text-emerald-400 font-semibold bg-emerald-400/10 ring-1 ring-inset ring-emerald-400/30 px-1.5 py-0.5 rounded-md';
+          } else {
+            statusBadge.className = 'text-[11px] text-rose-400 font-semibold bg-rose-400/10 ring-1 ring-inset ring-rose-400/30 px-1.5 py-0.5 rounded-md';
+          }
+        }
+
+        if (!res.ok) {
+          const errBody = await res.text();
+          throw new Error(`HTTP ${res.status}: ${errBody || res.statusText}`);
+        }
+
+        const data = await res.json();
+
+        if (navBadge && Array.isArray(data)) {
+          navBadge.innerText = data.length;
+        }
+
+        if (preEl) {
+          preEl.innerHTML = highlightJson(data);
+        }
+      } catch (err) {
+        if (latencyEl) latencyEl.innerText = 'Error';
+        if (statusBadge && !statusBadge.innerText.startsWith('5') && !statusBadge.innerText.startsWith('4')) {
+          statusBadge.innerText = 'Error 500';
+          statusBadge.className = 'text-[11px] text-rose-400 font-semibold bg-rose-400/10 ring-1 ring-inset ring-rose-400/30 px-1.5 py-0.5 rounded-md';
+        }
+        if (preEl) preEl.innerText = `// Error real al consultar la API:\n${err.message}`;
+      }
     }
 
-    // Inicializar cargando coasters
     document.addEventListener('DOMContentLoaded', () => {
-      fetchData();
+      const origin = window.location.origin;
+      document.getElementById('base-url-text').innerText = origin + '/api';
+      
+      // Update curl code snippets to dynamic current host
+      ['coasters', 'parks', 'attractions', 'shows', 'restaurants', 'operators'].forEach(ep => {
+        const curlEl = document.getElementById(`curl-code-${ep}`);
+        if (curlEl) {
+          curlEl.innerText = `curl -X GET ${origin}/api/${ep}`;
+        }
+      });
+
+      updateThemeUI(document.documentElement.classList.contains('dark'));
+      
+      ['coasters', 'parks', 'attractions', 'shows', 'restaurants', 'operators'].forEach(ep => {
+        fetchEndpointData(ep);
+      });
     });
   </script>
 </body>
